@@ -15,6 +15,7 @@ import { join, dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { RUANG, jalur, tulisAtomik, statusAgen, siapkanRuang, bacaDesain } from './ruang.js'
+import { envMinimal } from './render.js'
 
 const AKAR = join(dirname(fileURLToPath(import.meta.url)), '..')
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -39,7 +40,7 @@ export function bukaDiOS(target) {
   const [cmd, args] = process.platform === 'win32'
     ? (url ? ['rundll32.exe', ['url.dll,FileProtocolHandler', target]] : ['explorer.exe', [target]])   // explorer.exe gagal diam-diam pada URL ber-? dan &
     : process.platform === 'darwin' ? ['open', [target]] : ['xdg-open', [target]]
-  try { spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: false }).unref(); return true } catch { return false }
+  try { spawn(cmd, args, { env: envMinimal(), detached: true, stdio: 'ignore', windowsHide: false }).unref(); return true } catch { return false }
 }
 
 // salin desain + gambar yang dipakainya ke folder tujuan (dipakai agent lewat MCP, bukan lewat HTTP)

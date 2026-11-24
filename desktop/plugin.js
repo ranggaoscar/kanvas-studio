@@ -395,7 +395,19 @@ function terapkanTata(doc) {
 }
 
 
-// gambar: path relatif di folder desain → data URL (lewat ctx.files), atau data:/http
+// tolak URL gambar ke alamat lokal / jaringan privat / metadata cloud saat render headless (cegah SSRF)
+function urlGambarAman(src) {
+  try {
+    const u = new URL(src)
+    if (u.protocol !== 'https:' && (window.KANVAS_RENDER || u.protocol !== 'http:')) return false
+    const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+    if (!h || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return false
+    if (/^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(h)) return false
+    if (h === '::1' || h === '::' || /^(fc|fd|fe80:|::ffff:(127|10|169\.254|192\.168|172\.(1[6-9]|2\d|3[01])))/i.test(h)) return false
+    return true
+  } catch { return false }
+}
+// gambar: path relatif di folder desain → data URL (lewat ctx.files), atau data:/https publik
 function gambar(src) {
   if (!src) return null
   const c = S.img[src]
@@ -403,7 +415,8 @@ function gambar(src) {
   S.img[src] = { status: 'muat' }
   ;(async () => {
     let url = src
-    if (!/^(data:|https?:)/.test(src)) {
+    if (/^https?:/i.test(src) && !urlGambarAman(src)) { S.img[src] = { status: 'gagal' }; return emit() }
+    if (!/^(data:|https?:)/i.test(src)) {
       const r = S.folder ? await S.ctx.files.readDataUrl(S.folder.id, src) : { ok: false }
       if (!r.ok) { S.img[src] = { status: 'gagal' }; return emit() }
       url = r.url
@@ -2273,4 +2286,4 @@ export default {
 }
 
 /* =============== 11. ENGINE (dipakai app lokal & perender untuk agent) =============== */
-export const engine = { S, emit, buka, sinkronKomponen, bidangDariTitik, terapkanTata, urutPohon, muatFontDoc, fontGagal, namaFont, normalisasi, layoutTeks, tinggi, fontStr, gambarAb, svgAb, buatPdf, keBlob, GOOGLE_FONTS, LOGO_SVG }
+export const engine = { S, emit, buka, urlGambarAman, sinkronKomponen, bidangDariTitik, terapkanTata, urutPohon, muatFontDoc, fontGagal, namaFont, normalisasi, layoutTeks, tinggi, fontStr, gambarAb, svgAb, buatPdf, keBlob, GOOGLE_FONTS, LOGO_SVG }

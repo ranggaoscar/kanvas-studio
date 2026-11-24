@@ -214,7 +214,7 @@ Full document & operation spec: [docs/FORMAT.md](docs/FORMAT.md).
 - **Local-only server:** The local studio binds strictly to `127.0.0.1`, checks `Host` and `Origin`, and requires the `X-Kanvas: 1` header so third-party websites cannot call the local API.
 - **No accounts, no telemetry:** Designs stay on your machine. Nothing is uploaded to any cloud service.
 - **Network use:** Only Google Fonts stylesheets/font files are fetched when rendering designs (plus any external `https://` image URL you explicitly add to a design).
-- **Local subprocesses:** Headless Chrome or Microsoft Edge is launched on demand only for `kanvas_view`, `kanvas_export` (`png`/`jpg`/`pdf`), and `kanvas render`.
+- **Local subprocesses:** Headless Chrome or Microsoft Edge is launched on demand only for `kanvas_view`, `kanvas_export` (`png`/`jpg`/`pdf`), and `kanvas render`, with a **minimal environment** (Hermes API keys, `GH_TOKEN`, and other host secrets are never passed to child processes). In headless render mode, external image URLs are restricted to public `https://` hosts (private, loopback, and cloud-metadata addresses are refused).
 - **File access:** Studio HTTP APIs are confined strictly to the active workspace folder (`~/KanvasStudio` standalone, or Hermes's `plugin-files/data/kanvas-studio` inside Hermes Desktop). `kanvas_import_image` and `kanvas_export` read/write only paths explicitly requested via MCP.
 
 ---

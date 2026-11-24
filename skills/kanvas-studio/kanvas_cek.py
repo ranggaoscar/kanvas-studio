@@ -240,9 +240,13 @@ def preview(doc, path, target):
     if not browser: return None, "Chrome/Edge not found, preview skipped."
     tmpd = tempfile.mkdtemp(prefix="kanvas_")
     hp = os.path.join(tmpd, "render.html"); open(hp, "w", encoding="utf-8").write(html)
+    env_keys = ("PATH", "PATHEXT", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA",
+                "TEMP", "TMP", "TMPDIR", "SystemRoot", "WINDIR", "COMSPEC", "DISPLAY", "WAYLAND_DISPLAY",
+                "XDG_RUNTIME_DIR", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY")
+    child_env = {k: os.environ[k] for k in env_keys if k in os.environ}
     r = subprocess.run([browser, "--headless=new", "--disable-gpu", "--virtual-time-budget=15000",
                         f"--user-data-dir={os.path.join(tmpd, 'prof')}", "--dump-dom", "file:///" + hp.replace("\\", "/")],
-                       capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=120)
+                       env=child_env, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=120)
     m = re.search(r'<pre id="out">(.*?)</pre>', r.stdout, re.S)
     if not m or not m.group(1).strip(): return None, "Render failed (empty DOM)."
     outdir = os.path.join(folder, "preview"); os.makedirs(outdir, exist_ok=True)

@@ -108,8 +108,8 @@ async function render(p) {
   engine.terapkanTata(doc)   // auto-layout dihitung setelah font siap (ukuran teks akurat)
   const gambarAda = new Set()
   for (const ab of doc.artboards) for (const e of ab.elemen) if (e.tipe === 'gambar' && e.src) {
-    if (/^(data:|https?:)/.test(e.src)) gambarAda.add(e.src)
-    else if ((await files.stat('data', e.src)).exists) gambarAda.add(e.src)
+    if (/^data:/i.test(e.src) || (/^https?:/i.test(e.src) && engine.urlGambarAman(e.src))) gambarAda.add(e.src)
+    else if (!/^https?:/i.test(e.src) && (await files.stat('data', e.src)).exists) gambarAda.add(e.src)
   }
   const cek = periksa(doc, { layoutTeks: engine.layoutTeks, fontStr: engine.fontStr, adaGambar: s => gambarAda.has(s), fontGagal: engine.fontGagal })
   const pilih = doc.artboards.filter(ab => !target || ab.id === target)

@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { request } from 'node:http'
 
+import { envMinimal } from '../server/render.js'
+
 process.env.KANVAS_HOME = mkdtempSync(join(tmpdir(), 'kanvas-studio-tes-'))
 const { mulaiStudio, gambarLokal } = await import('../server/studio.js')
 
@@ -44,4 +46,10 @@ test('salinan desain hanya membawa file gambar, tanpa file tersembunyi', () => {
   assert.deepEqual(gambarLokal(doc), ['gambar/a.png'])
   rmSync(process.env.KANVAS_HOME, { recursive: true, force: true })
   assert.ok(!existsSync(process.env.KANVAS_HOME))
+})
+
+test('envMinimal strips host tokens and keeps only minimal runtime vars', () => {
+  const e = envMinimal({ PATH: '/usr/bin', HOME: '/home/u', GH_TOKEN: 'secret', GITHUB_TOKEN: 'secret', OPENAI_API_KEY: 'sk-test', HERMES_CUSTOM_KEY: 'x' })
+  assert.equal(e.PATH, '/usr/bin'); assert.equal(e.HOME, '/home/u')
+  assert.equal(e.GH_TOKEN, undefined); assert.equal(e.GITHUB_TOKEN, undefined); assert.equal(e.OPENAI_API_KEY, undefined); assert.equal(e.HERMES_CUSTOM_KEY, undefined)
 })
