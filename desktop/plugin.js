@@ -1083,7 +1083,7 @@ async function svgAb(ab) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgN(ab.w)}" height="${svgN(ab.h)}" viewBox="0 0 ${svgN(ab.w)} ${svgN(ab.h)}"><defs>${defs.join('')}</defs>${body.join('')}</svg>`
 }
 // PDF sederhana: tiap artboard = satu halaman berisi gambar JPEG (ukuran halaman = ukuran artboard)
-function buatPdf(hal) {
+function buatPdfBytes(hal) {
   const enc = new TextEncoder(), parts = [], offs = []; let len = 0
   const push = d => { const b = typeof d === 'string' ? enc.encode(d) : d; parts.push(b); len += b.length }
   const obj = (id, ...isi) => { offs[id] = len; push(`${id} 0 obj\n`); isi.forEach(push); push('\nendobj\n') }
@@ -1100,8 +1100,11 @@ function buatPdf(hal) {
   const xref = len
   push(`xref\n0 ${n + 1}\n0000000000 65535 f \n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join(''))
   push(`trailer\n<< /Size ${n + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`)
-  return new Blob(parts, { type: 'application/pdf' })
+  const out = new Uint8Array(len); let pos = 0
+  for (const b of parts) { out.set(b, pos); pos += b.length }
+  return out
 }
+const buatPdf = hal => new Blob([buatPdfBytes(hal)], { type: 'application/pdf' })
 const keBlob = (c, type, q) => new Promise(r => c.toBlob(r, type, q))
 async function simpanBlob(blob, nama, jenis) {
   if (window.showSaveFilePicker) {
@@ -1140,6 +1143,14 @@ async function ekspor(jenis) {
       await simpanBlob(buatPdf(hal), `${namaDasar(jenis === 'pdf' ? null : ab)}.pdf`, 'PDF')
     } else if (jenis === 'json') {
       await simpanBlob(new Blob([JSON.stringify(S.doc, null, 1)], { type: 'application/json' }), `${namaDasar(null)}.kanvas.json`, 'Design')
+    } else if (jenis === 'pptx') {
+      await simpanBlob(buatPptxBrowser(S.doc), `${namaDasar(null)}.pptx`, 'PowerPoint Presentation')
+    } else if (jenis === 'html') {
+      await simpanBlob(new Blob([eksporKodeBrowser(ab, 'html')], { type: 'text/html;charset=utf-8' }), `${namaDasar(ab)}.html`, 'HTML')
+    } else if (jenis === 'react') {
+      const jsx = eksporKodeBrowser(ab, 'react')
+      await S.ctx.os.writeClipboard(jsx)
+      host.notify({ kind: 'info', message: 'React + Tailwind JSX copied to clipboard' })
     }
     S.status = 'Exported ✓'
   } catch (e) { S.status = 'Export failed: ' + (e?.message || e) }
@@ -1186,13 +1197,399 @@ function TombolStatus() {
 }
 
 /* =============== 7. MINTA AGENT =============== */
-async function mintaAgentBaru(brief) {
-  const teks = `[Kanvas Studio] New design from the brief below.\nUse the kanvas_* tools (MCP): kanvas_guide once, pick the size from the brief (A4/poster → a4, deck/slides → slide, Instagram feed → ig-feed, story → ig-story, YouTube thumbnail → yt-thumbnail, logo → logo) or start from a matching kanvas_templates entry. kanvas_create, then kanvas_edit in small passes so I can watch on the canvas, then kanvas_view before you finish.\n\nBrief: ${brief}`
+async function mintaAgentBaru(brief, style = '', brandId = '') {
+  const styleLine = style && style !== 'auto' ? `\nPreferred Art Direction: ${style}` : ''
+  const brandLine = brandId ? `\nActive Brand Kit: ${brandId} (load via kanvas_brand)` : ''
+  const teks = `[Kanvas Studio] New design from the brief below.\nUse the kanvas_* MCP tools: call kanvas_status, kanvas_brand (if a brand applies), and kanvas_art_direction to plan contextual aesthetics and grid without rigid recipes. Then build with kanvas_create / kanvas_campaign / kanvas_presentation / kanvas_edit / kanvas_dataviz in visible steps, and run kanvas_view (Visual QA) before finishing.${styleLine}${brandLine}\n\nBrief: ${brief}`
   const ok = await host.composer.insertText(null, teks, { mode: 'block' })
   if (ok) {
     host.composer.submit?.(null, teks) || host.composer.focus(null)
     S.sesiAgent = host.state?.focusedSessionId?.get?.() || 'tunggu'; S.ctx.storage.set('sesiAgent', S.sesiAgent); emit()
-  } else { await S.ctx.os.writeClipboard(teks); host.notify({ kind: 'info', message: 'Brief copied. Paste it to your agent (Claude Code, Codex, Hermes): it picks the size and starts drawing here.' }) }
+  } else { await S.ctx.os.writeClipboard(teks); host.notify({ kind: 'info', message: 'Brief copied. Paste it to your agent (Claude Code, Codex, Hermes) to start drawing here.' }) }
+}
+
+/* =============== 7b. V0.3.0 UI: BRAND KIT, DATA VIZ, SMART RESIZE, LIVE QA, PPTX & CODE =============== */
+const GAYA_ARAH = [
+  ['auto', 'Auto'], ['swiss-editorial', 'Swiss Editorial'], ['luxury-minimalism', 'Luxury'],
+  ['brutalism', 'Brutalist'], ['cinematic', 'Cinematic'], ['corporate-premium', 'Corporate'], ['experimental', 'Experimental']
+]
+const RESIZE_PRESET = [
+  { nama: 'IG Story 9:16', w: 1080, h: 1920 }, { nama: 'IG Feed 4:5', w: 1080, h: 1350 },
+  { nama: 'IG Square', w: 1080, h: 1080 }, { nama: 'A4 Portrait', w: 794, h: 1123 },
+  { nama: 'Web Banner', w: 1440, h: 600 }, { nama: 'Slide 16:9', w: 1920, h: 1080 }, { nama: 'YouTube Thumb', w: 1280, h: 720 }
+]
+
+const hexRgbUI = c => {
+  let s = String(c || '').trim().replace(/^#/, '')
+  if (s.length === 3) s = [...s].map(x => x + x).join('')
+  return /^[0-9a-f]{6}$/i.test(s) ? [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16)) : null
+}
+const lumUI = rgb => { const ch = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }; return 0.2126 * ch(rgb[0]) + 0.7152 * ch(rgb[1]) + 0.0722 * ch(rgb[2]) }
+const kontrasUI = (a, b) => { const ra = hexRgbUI(a), rb = hexRgbUI(b); if (!ra || !rb) return 1; const la = lumUI(ra), lb = lumUI(rb); return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05) }
+const gelapUI = bg => { const c = typeof bg === 'string' ? bg : (Array.isArray(bg?.warna) ? bg.warna[0] : '#FFFFFF'); const r = hexRgbUI(c); return r ? lumUI(r) < 0.3 : false }
+
+async function muatBrand() {
+  if (!S.ctx?.files || !S.folder) return
+  try {
+    const r = await S.ctx.files.readText(S.folder.id, 'brands/index.json')
+    if (r.ok) {
+      const d = JSON.parse(r.text)
+      S.brands = { defaultId: d.defaultId || null, map: d.brands || {} }
+      emit(); return
+    }
+  } catch {}
+  S.brands = { defaultId: null, map: {} }
+}
+async function simpanBrandStore(store) {
+  if (!S.ctx?.files || !S.folder) return
+  await S.ctx.files.writeText(S.folder.id, 'brands/index.json', JSON.stringify({ versi: 1, defaultId: store.defaultId || null, brands: store.map || {} }, null, 2))
+  S.brands = store; emit()
+}
+async function muatAset() {
+  if (!S.ctx?.files || !S.folder) return
+  try {
+    const r = await S.ctx.files.readText(S.folder.id, 'assets-library/index.json')
+    if (r.ok) { S.assetsLib = Object.values(JSON.parse(r.text).assets || {}); emit(); return }
+  } catch {}
+  S.assetsLib = []
+}
+const daftarBrand = () => Object.values(S.brands?.map || {}).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+const brandAktif = () => (S.doc?.brand && S.brands?.map?.[S.doc.brand]) || (S.brands?.defaultId && S.brands?.map?.[S.brands.defaultId]) || null
+
+function applyBrandUI(brand) {
+  if (!brand || !S.doc) return
+  const c = brand.colors || {}, f = brand.fonts || {}
+  const pickInk = (bgHex, cands) => {
+    for (const x of cands.filter(Boolean)) if (kontrasUI(x, bgHex) >= 4.5) return x
+    let best = '#111111', bestC = -1
+    for (const x of [...cands.filter(Boolean), '#111111', '#FFFFFF']) { const k = kontrasUI(x, bgHex); if (k > bestC) { bestC = k; best = x } }
+    return best
+  }
+  ubah(d => {
+    d.brand = brand.id
+    for (const ab of d.artboards) {
+      if (c.background && typeof ab.bg === 'string') ab.bg = c.background
+      const abBg = typeof ab.bg === 'string' ? ab.bg : (ab.bg?.warna?.[0] || '#FFFFFF')
+      const abArea = (ab.w || 1) * (ab.h || 1), byId = new Map(ab.elemen.map(e => [e.id, e]))
+      for (const el of ab.elemen) {
+        if ((el.tipe === 'kotak' || el.tipe === 'grup') && typeof el.fill === 'string') {
+          const area = (el.w || 0) * (el.h || 0)
+          if (area > 0 && area < abArea * 0.08 && (c.accent || c.primary)) el.fill = c.accent || c.primary
+          else if (area >= abArea * 0.08 && area < abArea * 0.7 && c.surface) el.fill = c.surface
+        } else if (el.tipe === 'path' && el.ikon && el.garis?.warna && (c.accent || c.primary)) el.garis.warna = c.accent || c.primary
+      }
+      for (const el of ab.elemen) {
+        if (el.tipe !== 'teks') continue
+        const isDisp = (el.ukuran || 32) >= 36 || ((el.ukuran || 32) >= 28 && (el.tebal || 400) >= 700)
+        const nextF = isDisp && f.display ? f.display : (!isDisp && f.body ? f.body : (f.display || f.body))
+        if (nextF) el.font = nextF
+        const p = el.induk && byId.get(el.induk)
+        const localBg = (p && typeof p.fill === 'string') ? p.fill : abBg
+        const acc = c.accent || c.primary
+        if (el.kapital && (el.ukuran || 32) <= 24 && acc && kontrasUI(acc, localBg) >= 3) el.warna = acc
+        else el.warna = pickInk(localBg, [c.text, c.muted, '#111111', '#FFFFFF'])
+      }
+    }
+  })
+  S.menu = null; S.status = `Applied brand "${brand.name}" ✓`; emit()
+}
+
+function smartResizeUI(preset) {
+  const src = abAktif(); if (!src) return
+  S.menu = null
+  const W = preset.w, H = preset.h, srcW = src.w || 1920, srcH = src.h || 1080
+  const sx = W / srcW, sy = H / srcH, areaScale = Math.sqrt((W * H) / (srcW * srcH))
+  const landToPort = (srcW / srcH) > 1.15 && (W / H) < 0.92
+  const minFont = Math.max(12, Math.round(Math.min(W, H) / 60)), safeM = Math.max(24, Math.round(Math.min(W, H) * 0.065))
+  const cw = Math.max(120, W - safeM * 2)
+  let baruId = null
+  ubah(d => {
+    const map = new Map()
+    const cloned = clone(src.elemen).map(e => { const nid = uid(e.tipe === 'grup' ? 'g' : 'e'); map.set(e.id, nid); return { ...e, id: nid } })
+    for (const e of cloned) { if (e.induk && map.has(e.induk)) e.induk = map.get(e.induk); delete e.komponen; delete e.salinan; delete e.timpa }
+    const fScale = Math.max(0.55, Math.min(1.8, areaScale))
+    for (const e of cloned) {
+      if (e.tipe === 'teks') e.ukuran = Math.max(minFont, Math.round((e.ukuran || 32) * fScale))
+      if (e.tipe === 'grup' && e.tata && landToPort && e.tata.arah === 'baris' && (e.w || 0) >= srcW * 0.35) {
+        e.tata = { ...e.tata, arah: 'kolom', rata: 'regang' }; e.lebar = 'tetap'; e.tinggi = 'peluk'
+      }
+    }
+    const top = cloned.filter(e => !e.induk)
+    if (landToPort && top.length >= 2) {
+      let cy = safeM; const gap = Math.max(18, Math.round(H * 0.025))
+      for (const e of top) {
+        const dekor = e.tipe !== 'teks' && ((e.opacity ?? 1) < 0.55 || (e.w || 100) * (e.h || 100) > srcW * srcH * 0.55)
+        if (dekor) { e.x = Math.round((e.x || 0) * sx); e.y = Math.round((e.y || 0) * sy); e.w = Math.round((e.w || 100) * sx); e.h = Math.round((e.h || 100) * sy); continue }
+        const ox = e.x || 0, oy = e.y || 0
+        if (e.tipe === 'teks' || e.tipe === 'grup') { e.w = cw; e.x = safeM }
+        else if (e.tipe === 'path' || e.tipe === 'elips') { const s = Math.min(sx, sy); e.w = Math.max(24, Math.round((e.w || 100) * s)); e.h = Math.max(24, Math.round((e.h || 100) * s)); e.x = safeM }
+        else { e.w = cw; e.h = Math.min(Math.round(H * 0.35), Math.max(48, Math.round((e.h || 100) * areaScale))); e.x = safeM }
+        e.y = cy
+        if (e.tipe === 'grup' && !e.tata) for (const k of cloned) if (k.induk === e.id) { k.x = (k.x || 0) + (e.x - ox); k.y = (k.y || 0) + (e.y - oy) }
+        cy += tinggi(e) + gap
+      }
+    } else {
+      for (const e of top) {
+        const ox = e.x || 0, oy = e.y || 0
+        e.x = Math.round(ox * sx); e.y = Math.round(oy * sy)
+        if (e.tipe === 'path' || (e.tipe === 'elips' && Math.abs((e.w || 100) - (e.h || 100)) < 10)) { const s = Math.min(sx, sy); e.w = Math.max(20, Math.round((e.w || 100) * s)); e.h = Math.max(20, Math.round((e.h || 100) * s)) }
+        else { e.w = Math.max(40, Math.round((e.w || 100) * sx)); if (e.tipe !== 'teks') e.h = Math.max(24, Math.round((e.h || 100) * sy)) }
+        if (e.tipe === 'grup' && !e.tata) for (const k of cloned) if (k.induk === e.id) { k.x = (k.x || 0) + (e.x - ox); k.y = (k.y || 0) + (e.y - oy) }
+      }
+    }
+    const last = d.artboards.at(-1)
+    const ab = { id: uid('a'), nama: `${src.nama} (${preset.nama})`, x: last ? last.x + last.w + 160 : 0, y: last ? last.y : 0, w: W, h: H, bg: clone(src.bg), elemen: cloned }
+    d.artboards.push(ab); baruId = ab.id
+  })
+  if (baruId) { const ab = abById(baruId); S.ab = baruId; S.sel = []; if (ab) fitAb(ab); S.status = `Smart Resized → ${preset.nama} ✓`; emit() }
+}
+
+function sisipDataViz(jenis) {
+  const ab = abAktif(); if (!ab) return
+  S.menu = null
+  const br = brandAktif(), dark = gelapUI(ab.bg), bc = br?.colors || {}, bf = br?.fonts || {}
+  const txt = bc.text || (dark ? '#F8FAFC' : '#0F172A'), mut = bc.muted || (dark ? '#94A3B8' : '#475569')
+  const surf = bc.surface || (dark ? '#1E2534' : '#F4F5F8'), rule = dark ? '#2D3748' : '#DCE2EA'
+  const acc = bc.accent || bc.primary || (dark ? '#FF6B4A' : '#E03E2D')
+  const pal = [acc, '#1D4ED8', '#047857', '#D97706']
+  const df = bf.display || 'Plus Jakarta Sans', bof = bf.body || 'Inter', mf = bf.mono || 'IBM Plex Mono'
+  const W = Math.min(Math.round(ab.w * 0.72), 860), H = Math.min(Math.round(ab.h * 0.44), 420)
+  const x0 = Math.round((ab.w - W) / 2), y0 = Math.round((ab.h - H) / 2), gid = uid('g'), anak = []
+
+  if (jenis === 'bar') {
+    const vals = [['Q1', 28], ['Q2', 44], ['Q3', 62], ['Q4', 86]], max = 86
+    const pY = y0 + 70, pH = H - 120, slot = W / vals.length, bw = Math.min(96, Math.round(slot * 0.52))
+    anak.push({ id: uid('e'), induk: gid, tipe: 'teks', x: x0, y: y0, w: W, teks: 'Quarterly Growth', font: df, ukuran: 26, tebal: 700, warna: txt })
+    anak.push({ id: uid('e'), induk: gid, tipe: 'path', x: x0, y: pY + pH, w: W, h: 2, vb: [W, 2], d: `M0 1H${W}`, fill: null, garis: { tebal: 1.5, warna: rule } })
+    vals.forEach(([lb, v], i) => {
+      const bh = Math.round((v / max) * pH), bx = Math.round(x0 + i * slot + (slot - bw) / 2), by = pY + pH - bh
+      anak.push({ id: uid('e'), induk: gid, tipe: 'kotak', x: bx, y: by, w: bw, h: bh, radius: 6, fill: i === 3 ? acc : pal[i % pal.length], opacity: i === 3 ? 1 : 0.78 })
+      anak.push({ id: uid('e'), induk: gid, tipe: 'teks', x: bx - 12, y: by - 26, w: bw + 24, teks: v + 'k', font: mf, ukuran: 16, tebal: 700, warna: txt, rata: 'tengah' })
+      anak.push({ id: uid('e'), induk: gid, tipe: 'teks', x: bx - 12, y: pY + pH + 10, w: bw + 24, teks: lb, font: bof, ukuran: 16, tebal: 600, warna: mut, rata: 'tengah' })
+    })
+  } else if (jenis === 'donut') {
+    const segs = [['Product', 52], ['Services', 30], ['Partners', 18]], sz = Math.min(H - 60, Math.round(W * 0.42))
+    const polar = (r, a) => [(100 + r * Math.cos(a)).toFixed(2), (100 + r * Math.sin(a)).toFixed(2)]
+    let ang = -Math.PI / 2
+    anak.push({ id: uid('e'), induk: gid, tipe: 'teks', x: x0, y: y0, w: W, teks: 'Revenue Mix', font: df, ukuran: 26, tebal: 700, warna: txt })
+    segs.forEach(([lb, v], i) => {
+      const sw = (v / 100) * Math.PI * 2, a0 = ang, a1 = ang + sw; ang = a1
+      const [x1, y1] = polar(94, a0), [x2, y2] = polar(94, a1), [ix2, iy2] = polar(58, a1), [ix1, iy1] = polar(58, a0)
+      anak.push({ id: uid('e'), induk: gid, tipe: 'path', x: x0, y: y0 + 50, w: sz, h: sz, vb: [200, 200], d: `M${x1} ${y1} A94 94 0 ${sw > Math.PI ? 1 : 0} 1 ${x2} ${y2} L${ix2} ${iy2} A58 58 0 ${sw > Math.PI ? 1 : 0} 0 ${ix1} ${iy1} Z`, fill: pal[i] })
+      const ly = y0 + 76 + i * 48
+      anak.push({ id: uid('e'), induk: gid, tipe: 'kotak', x: x0 + sz + 36, y: ly + 6, w: 16, h: 16, radius: 4, fill: pal[i] })
+      anak.push({ id: uid('e'), induk: gid, tipe: 'teks', x: x0 + sz + 62, y: ly, w: W - sz - 66, teks: `${lb} — ${v}%`, font: bof, ukuran: 18, tebal: 600, warna: txt })
+    })
+    anak.push({ id: uid('e'), induk: gid, tipe: 'teks', x: x0 + Math.round(sz * 0.2), y: y0 + 50 + Math.round(sz * 0.4), w: Math.round(sz * 0.6), teks: '100%', font: df, ukuran: 28, tebal: 800, warna: txt, rata: 'tengah' })
+  } else if (jenis === 'table') {
+    const cols = ['Metric', 'Q3', 'Q4'], rows = [['Active Users', '24.2k', '38.6k'], ['Retention', '91%', '95%'], ['NPS Score', '64', '72']]
+    const cw = Math.floor((W - 40) / 3), hiInk = gelapUI(acc) ? '#FFFFFF' : '#111111'
+    const mkRow = (cells, bg, ink, bold) => {
+      const rid = uid('g')
+      return [
+        { id: rid, induk: gid, tipe: 'grup', lebar: 'isi', tinggi: 'peluk', fill: bg, radius: 8, garis: bg ? null : { tebal: 1, warna: rule }, tata: { arah: 'baris', padding: [14, 20, 14, 20], rata: 'tengah' } },
+        ...cells.map((t, ci) => ({ id: uid('e'), induk: rid, tipe: 'teks', w: cw, teks: t, font: ci === 0 ? bof : mf, ukuran: 17, tebal: bold ? 700 : 500, warna: ink, rata: ci === 0 ? 'kiri' : 'kanan' }))
+      ]
+    }
+    ubah(d => {
+      const cur = d.artboards.find(a => a.id === ab.id)
+      cur.elemen.push(
+        { id: gid, tipe: 'grup', nama: 'Data Table', x: x0, y: y0, w: W, tinggi: 'peluk', fill: null, tata: { arah: 'kolom', jarak: 8, padding: 0, rata: 'regang' } },
+        ...mkRow(cols, acc, hiInk, true),
+        ...rows.flatMap((r, ri) => mkRow(r, ri % 2 ? surf : null, txt, false))
+      )
+      cur.elemen = urutPohon(cur.elemen)
+    })
+    S.sel = [gid]; S.status = 'Inserted Data Table ✓'; emit(); return
+  } else if (jenis === 'diagram') {
+    const steps = [['01', 'Brief'], ['02', 'Art Direct'], ['03', 'Visual QA']], gap = 44, cw = Math.floor((W - gap * 2) / 3)
+    steps.forEach(([num, nm], i) => {
+      const cx = x0 + i * (cw + gap), cid = uid('g'), hi = i === 1, bg = hi ? acc : surf, ink = hi ? (gelapUI(acc) ? '#FFFFFF' : '#111111') : txt
+      anak.push({ id: cid, induk: gid, tipe: 'grup', x: cx, y: y0 + 20, w: cw, h: 150, fill: bg, radius: 14, garis: { tebal: 1.5, warna: hi ? acc : rule }, tata: { arah: 'kolom', jarak: 10, padding: 24, rata: 'regang' } })
+      anak.push({ id: uid('e'), induk: cid, tipe: 'teks', teks: num, font: mf, ukuran: 16, tebal: 700, warna: hi ? ink : acc })
+      anak.push({ id: uid('e'), induk: cid, tipe: 'teks', teks: nm, font: df, ukuran: 24, tebal: 700, warna: ink })
+      if (i < 2) anak.push({ id: uid('e'), induk: gid, tipe: 'path', x: cx + cw + 8, y: y0 + 86, w: gap - 16, h: 20, vb: [gap - 16, 20], d: `M0 10H${gap - 24} M${gap - 30} 4L${gap - 18} 10L${gap - 30} 16`, fill: null, garis: { tebal: 2.5, warna: acc }, ujung: 'bulat' })
+    })
+  }
+  ubah(d => {
+    const cur = d.artboards.find(a => a.id === ab.id)
+    cur.elemen.push({ id: gid, tipe: 'grup', nama: `Chart (${jenis})`, x: x0, y: y0, w: W, h: H, fill: null }, ...anak)
+    cur.elemen = urutPohon(cur.elemen)
+  })
+  S.sel = [gid]; S.status = `Inserted ${jenis} ✓`; emit()
+}
+
+// Live Visual QA score & diagnostics right inside the canvas toolbar
+function hitungQaCepat(doc) {
+  if (!doc?.artboards?.length) return { skor: 0, masalah: ['No artboards.'], saran: [], metrik: [] }
+  const masalah = [], saran = [], metrik = [], br = doc.brand && S.brands?.map?.[doc.brand]
+  const potong = (a, b) => !(a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1])
+  for (const ab of doc.artboards) {
+    const nm = `[${ab.nama || ab.id}]`, W = ab.w || 0, H = ab.h || 0, els = ab.elemen || []
+    const m0 = masalah.length, s0 = saran.length, fSet = new Set(), ukList = []
+    const safeM = Math.max(16, Math.round(Math.min(W, H) * 0.032))
+    let minEdge = Infinity, inkArea = 0
+    const box = e => {
+      if (e.tipe === 'teks') { const L = layoutTeks(e); return [e.x || 0, e.y || 0, (e.x || 0) + (e.w || 400), (e.y || 0) + L.h] }
+      return [e.x || 0, e.y || 0, (e.x || 0) + (e.w || 100), (e.y || 0) + (e.h || 100)]
+    }
+    els.forEach((el, i) => {
+      if (el.sembunyi) return
+      const b = box(el), dekor = el.tipe !== 'teks' && ((el.opacity ?? 1) < 0.6 || (b[2] - b[0]) * (b[3] - b[1]) > W * H * 0.6)
+      if (!dekor && !el.induk) inkArea += Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1]))
+      if (el.tipe !== 'teks') return
+      if (el.font) fSet.add(el.font)
+      const uk = el.ukuran || 32; ukList.push(uk)
+      const out = b[0] < -2 || b[1] < -2 || b[2] > W + 2 || b[3] > H + 2
+      if (out) masalah.push(`${nm} ${el.id}: text outside artboard.`)
+      else if (!el.rotasi && W >= 300) { const e = Math.min(b[0], b[1], W - b[2], H - b[3]); minEdge = Math.min(minEdge, e); if (e < safeM) saran.push(`${nm} ${el.id}: tight edge margin (${Math.round(e)}px).`) }
+      if ((el.lh ?? 1.2) < 0.85 && layoutTeks(el).lines.length >= 2) masalah.push(`${nm} ${el.id}: colliding line-height (${el.lh}).`)
+      const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2
+      let bg = typeof ab.bg === 'string' ? ab.bg : ab.bg?.warna?.[0] || '#FFFFFF'
+      for (const prev of els.slice(0, i)) {
+        if (prev.sembunyi) continue
+        const pb = box(prev)
+        if ((prev.tipe === 'kotak' || prev.tipe === 'elips' || prev.tipe === 'grup') && prev.fill && (prev.opacity ?? 1) >= 0.6 && pb[0] <= cx && cx <= pb[2] && pb[1] <= cy && cy <= pb[3]) bg = typeof prev.fill === 'string' ? prev.fill : prev.fill.warna?.[0] || bg
+        if (prev.tipe === 'teks' && potong(b, pb)) masalah.push(`${nm} ${el.id}: overlaps text ${prev.id}.`)
+      }
+      const k = kontrasUI(el.warna || '#101634', bg)
+      if (k < (uk >= 36 ? 2.6 : 3.5)) masalah.push(`${nm} ${el.id}: low contrast (${k.toFixed(1)}:1).`)
+    })
+    if (fSet.size > 3) saran.push(`${nm} uses ${fSet.size} font families (aim for ≤3).`)
+    if (br?.fonts) {
+      const okF = new Set([br.fonts.display, br.fonts.body, br.fonts.mono].filter(Boolean).map(x => x.toLowerCase()))
+      const off = [...fSet].filter(x => okF.size && !okF.has(x.toLowerCase()))
+      if (off.length) saran.push(`${nm} off-brand font(s): ${off.join(', ')}.`)
+    }
+    const abI = masalah.length - m0, abS = saran.length - s0
+    metrik.push({ id: ab.id, nama: ab.nama || ab.id, skor: Math.max(0, 100 - abI * 18 - Math.min(30, abS * 4)), whitespacePct: Math.round((1 - Math.min(1, inkArea / Math.max(1, W * H))) * 100), minMarginPx: Number.isFinite(minEdge) ? Math.round(minEdge) : null, fonts: [...fSet] })
+  }
+  const skor = Math.round(metrik.reduce((a, m) => a + m.skor, 0) / metrik.length)
+  return { skor, masalah, saran, metrik }
+}
+
+// Pure browser editable PowerPoint (.pptx, STORE ZIP) & HTML/React code exporters
+function buatZipStore(files) {
+  const enc = new TextEncoder(), crcT = new Uint32Array(256)
+  for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); crcT[i] = c >>> 0 }
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = crcT[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0 }
+  const locals = [], centrals = []; let off = 0
+  for (const [name, content] of files) {
+    const nb = enc.encode(name), data = content instanceof Uint8Array ? content : enc.encode(String(content)), crc = crc32(data)
+    const lh = new Uint8Array(30), lv = new DataView(lh.buffer)
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true); lv.setUint32(14, crc, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true); lv.setUint16(26, nb.length, true)
+    locals.push(lh, nb, data)
+    const ch = new Uint8Array(46), cv = new DataView(ch.buffer)
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true); cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, nb.length, true); cv.setUint32(42, off, true)
+    centrals.push(ch, nb); off += lh.length + nb.length + data.length
+  }
+  const cLen = centrals.reduce((s, b) => s + b.length, 0), eocd = new Uint8Array(22), ev = new DataView(eocd.buffer)
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true); ev.setUint32(12, cLen, true); ev.setUint32(16, off, true)
+  return new Blob([...locals, ...centrals, eocd], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+}
+function buatPptxBrowser(doc) {
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const hx = c => { let s = String(c || '').replace(/^#/, ''); if (s.length === 3) s = [...s].map(x => x + x).join(''); return /^[0-9a-f]{6}$/i.test(s) ? s.toUpperCase() : null }
+  const fl = f => !f ? '<a:noFill/>' : isGrad(f) ? `<a:gradFill><a:gsLst>${f.warna.map((c, i) => `<a:gs pos="${f.warna.length === 1 ? 0 : Math.round(i / (f.warna.length - 1) * 100000)}"><a:srgbClr val="${hx(c) || '101634'}"/></a:gs>`).join('')}</a:gsLst><a:lin ang="${Math.round(((((f.sudut ?? 135) - 90) % 360) + 360) % 360 * 60000)}" scaled="1"/></a:gradFill>` : (hx(f) ? `<a:solidFill><a:srgbClr val="${hx(f)}"/></a:solidFill>` : '<a:noFill/>')
+  const abs = doc.artboards || [], bW = abs[0]?.w || 1920, bH = abs[0]?.h || 1080, emu = 12192000 / Math.max(bW, bH)
+  const files = [], overrides = [], presRels = ['<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>'], sldIds = []
+  abs.forEach((ab, idx) => {
+    const n = idx + 1; let sid = 2
+    const shapes = (ab.elemen || []).filter(e => !e.sembunyi).map(el => {
+      const w = el.w || 100, hh = tinggi(el), xf = `<a:xfrm${el.rotasi ? ` rot="${Math.round(((el.rotasi % 360) + 360) % 360 * 60000)}"` : ''}><a:off x="${Math.round((el.x || 0) * emu)}" y="${Math.round((el.y || 0) * emu)}"/><a:ext cx="${Math.max(1, Math.round(w * emu))}" cy="${Math.max(1, Math.round(hh * emu))}"/></a:xfrm>`
+      if (el.tipe === 'teks') {
+        const algn = el.rata === 'tengah' ? 'ctr' : el.rata === 'kanan' ? 'r' : 'l', sz = Math.max(600, Math.round((el.ukuran || 32) * 0.75 * (emu / 6350) * 100))
+        const txt = el.kapital ? String(el.teks ?? '').toUpperCase() : String(el.teks ?? '')
+        const ps = txt.split('\n').map(l => `<a:p><a:pPr algn="${algn}"/><a:r><a:rPr lang="en-US" sz="${sz}" b="${(el.tebal || 400) >= 600 ? 1 : 0}" i="${el.miring ? 1 : 0}"><a:solidFill><a:srgbClr val="${hx(el.warna) || '101634'}"/></a:solidFill><a:latin typeface="${esc(el.font || 'Plus Jakarta Sans')}"/></a:rPr><a:t>${esc(l)}</a:t></a:r></a:p>`).join('')
+        return `<p:sp><p:nvSpPr><p:cNvPr id="${sid++}" name="${esc(el.id)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0"/><a:lstStyle/>${ps}</p:txBody></p:sp>`
+      }
+      if (el.tipe === 'kotak' || el.tipe === 'elips' || (el.tipe === 'grup' && (el.fill || el.garis?.tebal))) {
+        const prst = el.tipe === 'elips' ? 'ellipse' : (el.radius > 0 ? 'roundRect' : 'rect')
+        const ln = el.garis?.tebal ? `<a:ln w="${Math.round(el.garis.tebal * emu)}"><a:solidFill><a:srgbClr val="${hx(el.garis.warna) || '101634'}"/></a:solidFill></a:ln>` : '<a:ln><a:noFill/></a:ln>'
+        return `<p:sp><p:nvSpPr><p:cNvPr id="${sid++}" name="${esc(el.id)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf}<a:prstGeom prst="${prst}"><a:avLst/></a:prstGeom>${fl(el.fill)}${ln}</p:spPr></p:sp>`
+      }
+      return ''
+    }).join('')
+    files.push([`ppt/slides/slide${n}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr>${fl(ab.bg || '#FFFFFF')}<a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`])
+    files.push([`ppt/slides/_rels/slide${n}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`])
+    overrides.push(`<Override PartName="/ppt/slides/slide${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`)
+    presRels.push(`<Relationship Id="rId${n + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${n}.xml"/>`)
+    sldIds.push(`<p:sldId id="${256 + idx}" r:id="rId${n + 1}"/>`)
+  })
+  files.push(
+    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>${overrides.join('')}</Types>`],
+    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`],
+    ['ppt/presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${sldIds.join('')}</p:sldIdLst><p:sldSz cx="${Math.round(bW * emu)}" cy="${Math.round(bH * emu)}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`],
+    ['ppt/_rels/presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${presRels.join('')}</Relationships>`],
+    ['ppt/slideMasters/slideMaster1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`],
+    ['ppt/slideMasters/_rels/slideMaster1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`],
+    ['ppt/slideLayouts/slideLayout1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`],
+    ['ppt/slideLayouts/_rels/slideLayout1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`]
+  )
+  return buatZipStore(files)
+}
+function eksporKodeBrowser(ab, mode = 'html') {
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const els = (ab.elemen || []).filter(e => !e.sembunyi), byId = new Map(els.map(e => [e.id, e])), kids = new Map(), roots = []
+  for (const e of els) { if (e.induk && byId.has(e.induk)) { if (!kids.has(e.induk)) kids.set(e.induk, []); kids.get(e.induk).push(e) } else roots.push(e) }
+  const renderEl = (el, p, pad = '    ') => {
+    const auto = !!p?.tata, w = Math.round(el.w || 100), hh = Math.round(tinggi(el))
+    const px = p ? Math.round((el.x || 0) - (p.x || 0)) : Math.round(el.x || 0), py = p ? Math.round((el.y || 0) - (p.y || 0)) : Math.round(el.y || 0)
+    const st = [auto ? '' : `position:absolute;left:${px}px;top:${py}px`, el.tipe !== 'teks' ? `width:${w}px;height:${hh}px` : `width:${w}px`, el.fill ? `background:${fillCss(el.fill)}` : '', el.radius ? `border-radius:${el.radius}px` : '', el.tipe === 'elips' ? 'border-radius:9999px' : '', el.garis?.tebal ? `border:${el.garis.tebal}px solid ${el.garis.warna || '#101634'}` : '', el.tata ? `display:flex;flex-direction:${el.tata.arah === 'baris' ? 'row' : 'column'};gap:${el.tata.jarak || 0}px;padding:${padding4(el.tata.padding).map(v => v + 'px').join(' ')}` : '', el.tipe === 'teks' ? `margin:0;font:${el.tebal || 400} ${el.ukuran || 32}px/${el.lh || 1.2} "${el.font || 'Plus Jakarta Sans'}",sans-serif;color:${el.warna || '#101634'};white-space:pre-wrap` : ''].filter(Boolean).join(';')
+    if (el.tipe === 'teks') return `${pad}<p style="${st}">${esc(el.teks || '')}</p>`
+    if (el.tipe === 'path') { const vb = el.vb || [w, hh]; return `${pad}<svg style="${st}" viewBox="0 0 ${vb[0]} ${vb[1]}"><path d="${esc(el.d || '')}" fill="${esc(typeof el.fill === 'string' ? el.fill : 'none')}"${el.garis?.tebal ? ` stroke="${esc(el.garis.warna || '#101634')}" stroke-width="${el.garis.tebal}"` : ''} /></svg>` }
+    if (el.tipe === 'grup') { const ch = (kids.get(el.id) || []).map(c => renderEl(c, el, pad + '  ')).join('\n'); return `${pad}<div style="${st}">\n${ch}\n${pad}</div>` }
+    return `${pad}<div style="${st}"></div>`
+  }
+  const inner = roots.map(r => renderEl(r, null)).join('\n')
+  if (mode === 'react') {
+    const jsx = inner.replace(/style="([^"]*)"/g, (_, s) => `style={{ ${s.split(';').filter(Boolean).map(kv => { const [k, ...v] = kv.split(':'); return `${k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase())}: ${JSON.stringify(v.join(':').trim())}` }).join(', ')} }}`)
+    return `export default function KanvasExport() {\n  return (\n    <section style={{ position: "relative", width: ${ab.w}, height: ${ab.h}, background: ${JSON.stringify(fillCss(ab.bg || '#FFFFFF'))}, overflow: "hidden", margin: "0 auto" }}>\n${jsx}\n    </section>\n  )\n}\n`
+  }
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(ab.nama || 'Kanvas Export')}</title><link rel="stylesheet" href="${GOOGLE_FONTS}"></head><body style="margin:0;background:#0f1117;display:grid;place-items:center;min-height:100vh"><main style="position:relative;width:${ab.w}px;height:${ab.h}px;background:${fillCss(ab.bg || '#FFFFFF')};overflow:hidden">\n${inner}\n</main></body></html>`
+}
+function bukaModalBrand(editBrand) {
+  const awal = editBrand || { name: '', colors: { background: '#F4F1EA', surface: '#EAE5DA', text: '#111111', accent: '#E03E2D' }, fonts: { display: 'Syne', body: 'Inter', mono: 'IBM Plex Mono' }, style: { direction: 'swiss-editorial' } }
+  function FormBrand() {
+    const [nm, setNm] = useState(awal.name || '')
+    const [bg, setBg] = useState(awal.colors?.background || '#F4F1EA')
+    const [sf, setSf] = useState(awal.colors?.surface || '#EAE5DA')
+    const [tx, setTx] = useState(awal.colors?.text || '#111111')
+    const [ac, setAc] = useState(awal.colors?.accent || awal.colors?.primary || '#E03E2D')
+    const [df, setDf] = useState(awal.fonts?.display || 'Syne')
+    const [bf, setBf] = useState(awal.fonts?.body || 'Inter')
+    const [dir, setDir] = useState(awal.style?.direction || 'swiss-editorial')
+    const simpan = async () => {
+      const clean = nm.trim(); if (!clean) return
+      const id = editBrand?.id || clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'brand'
+      const cur = S.brands || { defaultId: null, map: {} }
+      const next = {
+        ...(cur.map[id] || { logos: [], assets: [] }),
+        id, name: clean,
+        colors: { primary: ac.toUpperCase(), accent: ac.toUpperCase(), background: bg.toUpperCase(), surface: sf.toUpperCase(), text: tx.toUpperCase(), muted: tx.toUpperCase() },
+        fonts: { display: df.trim() || 'Plus Jakarta Sans', body: bf.trim() || 'Inter', mono: 'IBM Plex Mono' },
+        style: { ...(cur.map[id]?.style || {}), direction: dir },
+        updatedAt: new Date().toISOString()
+      }
+      await simpanBrandStore({ defaultId: cur.defaultId || id, map: { ...cur.map, [id]: next } })
+      S.modal = null; S.status = `Saved Brand Kit "${clean}" ✓`; emit()
+    }
+    return h('div', { className: 'kv-bform' },
+      h('label', { className: 'kv-f' }, h('span', null, 'Brand Name'), h('input', { value: nm, placeholder: 'e.g. Atelier Nord', onChange: e => setNm(e.target.value) })),
+      h('div', { className: 'kv-row' },
+        h('label', { className: 'kv-f' }, h('span', null, 'Display Font'), h('input', { value: df, onChange: e => setDf(e.target.value) })),
+        h('label', { className: 'kv-f' }, h('span', null, 'Body Font'), h('input', { value: bf, onChange: e => setBf(e.target.value) }))),
+      h('div', { className: 'kv-row' },
+        [['BG', bg, setBg], ['Surface', sf, setSf], ['Text', tx, setTx], ['Accent', ac, setAc]].map(([l, v, s]) =>
+          h('label', { key: l, className: 'kv-f' }, h('span', null, l), h('input', { type: 'color', value: v, onChange: e => s(e.target.value) })))),
+      h('label', { className: 'kv-f' }, h('span', null, 'Art Direction'),
+        h('select', { value: dir, onChange: e => setDir(e.target.value) }, GAYA_ARAH.filter(([k]) => k !== 'auto').map(([k, l]) => h('option', { key: k, value: k }, l)))),
+      h('div', { className: 'kv-mact' },
+        h(Button, { variant: 'secondary', size: 'sm', onClick: () => { S.modal = null; emit() } }, 'Cancel'),
+        h(Button, { size: 'sm', onClick: simpan }, 'Save Brand Kit')))
+  }
+  S.modal = { judul: editBrand ? `Edit Brand · ${editBrand.name}` : 'New Brand Kit', konten: h(FormBrand), tanpaAksi: true }
+  emit()
 }
 /* =============== 8. KOMPONEN TAMPILAN =============== */
 function ElView({ el }) {
@@ -1707,7 +2104,68 @@ function PanelKanan() {
 
 /* ---------- toolbar, menu, modal, presentasi ---------- */
 const ALAT = [['pilih', '↖', 'Select (V)'], ['tangan', '✋', 'Pan (H / Space)'], ['teks', 'T', 'Text (T)'], ['kotak', '▢', 'Rectangle (R)'], ['elips', '◯', 'Ellipse (O)'], ['komentar', '💬', 'Comment (C) — click a spot, tell the agent what to change'], ['pena', '✒', 'Pen (P): click for a point, drag for a curve, click the first point to close, Enter to finish']]
+function MenuBrand() {
+  const list = daftarBrand(), cur = brandAktif()
+  const pakaiWarna = hex => {
+    const items = terpilih()
+    if (!items.length) { host.notify({ kind: 'info', message: 'Select an element first to apply a swatch color.' }); return }
+    ubah(() => items.forEach(({ el }) => { if (el.tipe === 'teks') el.warna = hex; else if (el.tipe === 'path' && el.ikon && el.garis) el.garis = { ...el.garis, warna: hex }; else el.fill = hex }))
+  }
+  return h('div', { className: 'kv-menu kanan kv-bmenu', ref: tempelMenu(true) },
+    h('div', { className: 'kv-kmenu-kepala' }, h('b', null, 'Brand Kits'), h('button', { className: 'kv-mini', onClick: () => { S.menu = null; bukaModalBrand(null) } }, '+ New')),
+    !list.length ? h('p', { className: 'kv-kmenu-kosong' }, 'Save reusable brand colors, fonts, and art direction. Works across Hermes Desktop and standalone MCP.') : null,
+    list.map(b => {
+      const c = b.colors || {}, cols = [c.background, c.surface, c.text, c.accent || c.primary].filter(Boolean)
+      const isAct = cur?.id === b.id
+      return h('div', { key: b.id, className: 'kv-bitem' + (isAct ? ' on' : '') },
+        h('div', { className: 'kv-bhead' },
+          h('b', null, b.name, b.id === S.brands?.defaultId ? h('em', { className: 'kv-tag' }, 'Default') : null),
+          h('span', null, [b.fonts?.display, b.fonts?.body].filter(Boolean).join(' / '))),
+        h('div', { className: 'kv-bswatch' }, cols.map((hx, i) => h('button', { key: i, title: `Apply ${hx} to selection`, style: { background: hx }, onClick: () => pakaiWarna(hx) }))),
+        h('div', { className: 'kv-bact' },
+          h('button', { className: 'utama', onClick: () => applyBrandUI(b) }, 'Apply to design'),
+          h('button', { onClick: () => { S.menu = null; bukaModalBrand(b) } }, 'Edit')))
+    }))
+}
+function MenuSisip() {
+  const aset = S.assetsLib || []
+  const sisipAset = a => {
+    const ab = abAktif(); if (!ab) return
+    S.menu = null
+    if (a.vector?.d) {
+      tambahEl({ id: uid('v'), tipe: 'path', nama: a.name, x: Math.round(ab.w / 2 - 80), y: Math.round(ab.h / 2 - 80), w: 160, h: 160, vb: a.vector.vb || [100, 100], d: a.vector.d, fill: a.vector.fill ?? '#101634', ...(a.vector.garis ? { garis: a.vector.garis } : {}) }, ab)
+    } else {
+      tambahEl({ id: uid('g'), tipe: 'gambar', nama: a.name, x: Math.round(ab.w / 2 - 140), y: Math.round(ab.h / 2 - 140), w: 280, h: 280, src: a.src, fit: 'contain' }, ab)
+    }
+  }
+  return h('div', { className: 'kv-menu kv-smenu', ref: tempelMenu(false) },
+    h('div', { className: 'kv-mhead' }, 'Data Visualization (editable)'),
+    [['bar', 'Bar Chart', 'vertical columns'], ['donut', 'Donut Chart', 'arc segments + legend'], ['table', 'Data Table', 'auto-layout rows'], ['diagram', 'Process Diagram', 'steps + arrows']]
+      .map(([k, a, b]) => h('button', { key: k, onClick: () => sisipDataViz(k) }, h('b', null, a), h('span', null, b))),
+    h('div', { className: 'kv-mhead' }, `Asset Library (${aset.length})`),
+    !aset.length ? h('div', { className: 'kv-mempty' }, 'No saved assets yet — import images or SVGs via kanvas_assets.') : aset.slice(0, 8).map(a =>
+      h('button', { key: a.id, onClick: () => sisipAset(a) }, h('b', null, a.name), h('span', null, a.category))))
+}
+function MenuQa({ qa }) {
+  const kirimQa = async () => {
+    S.menu = null; emit()
+    const items = [...qa.masalah.map(x => '- [ISSUE] ' + x), ...qa.saran.slice(0, 6).map(x => '- [SUGGESTION] ' + x)].join('\n')
+    const teks = `[Kanvas Studio] Please fix these Visual QA findings in ${S.file || 'the active design'} (current QA score: ${qa.skor}/100) using kanvas_edit, then verify with kanvas_view:\n${items}`
+    const ok = await host.composer.insertText(null, teks, { mode: 'block' })
+    if (ok) host.composer.submit?.(null, teks) || host.composer.focus(null)
+    else { await S.ctx.os.writeClipboard(teks); host.notify({ kind: 'info', message: 'QA checklist copied to clipboard for your agent.' }) }
+  }
+  return h('div', { className: 'kv-menu kanan kv-qmenu', ref: tempelMenu(true) },
+    h('div', { className: 'kv-kmenu-kepala' }, h('b', null, `Visual QA · ${qa.skor}/100`), h('span', { className: 'kv-qstat' }, qa.masalah.length ? `${qa.masalah.length} issue(s)` : 'Clean ✓')),
+    qa.metrik.map(m => h('div', { key: m.id, className: 'kv-qmet' }, h('b', null, m.nama), h('span', null, `${m.skor}/100 · space ~${m.whitespacePct}%${m.minMarginPx != null ? ` · margin ${m.minMarginPx}px` : ''}`))),
+    qa.masalah.length ? h('div', { className: 'kv-qsec err' }, h('b', null, 'Issues (fix)'), qa.masalah.slice(0, 6).map((x, i) => h('p', { key: i }, '✗ ' + x))) : null,
+    qa.saran.length ? h('div', { className: 'kv-qsec' }, h('b', null, 'Suggestions'), qa.saran.slice(0, 6).map((x, i) => h('p', { key: i }, '• ' + x))) : null,
+    !qa.masalah.length && !qa.saran.length ? h('p', { className: 'kv-kmenu-kosong' }, 'Zero overlap, clean margins, strong contrast, and cohesive typography.') : null,
+    (qa.masalah.length || qa.saran.length) ? h('button', { className: 'kv-kirim', onClick: kirimQa }, 'Send QA fixes to agent') : null)
+}
 function Atas({ diPane } = {}) {
+  const qa = hitungQaCepat(S.doc), br = brandAktif()
+  const qaCls = qa.masalah.length || qa.skor < 65 ? 'err' : qa.skor < 85 ? 'warn' : 'ok'
   return h('header', { className: 'kv-top' },
     h('div', { className: 'kv-brand' }, h(Logo), h('span', null, 'Kanvas Studio')),
     h('select', { className: 'kv-file', value: S.file || '', onChange: e => buka(e.target.value) }, S.files.map(f => h('option', { key: f, value: f }, f.replace(/\.kanvas\.json$/i, '')))),
@@ -1716,17 +2174,29 @@ function Atas({ diPane } = {}) {
       ALAT.map(([id, ic, t]) => h('button', { key: id, title: t, className: S.tool === id ? 'on' : '', onClick: () => { S.tool = id; emit() } }, ic)),
       h('button', { title: 'Insert image', onClick: sisipGambar }, '🖼'),
       h('button', { title: 'Icons (I): 2,000+ icons', onClick: () => { S.pilihIkon = true; emit() } }, '✦'),
-      h('div', { className: 'kv-dd' }, h('button', { title: 'New artboard', onClick: () => { S.menu = S.menu === 'ab' ? null : 'ab'; emit() } }, '⊞', h('span', { className: 'kv-lbl2' }, ' Artboard')),
-        S.menu === 'ab' ? h('div', { className: 'kv-menu', ref: tempelMenu(false) }, PRESET.map(p => h('button', { key: p.nama, onClick: () => tambahArtboard(p) }, h('b', null, p.nama), h('span', null, `${p.w}×${p.h}`)))) : null)),
+      h('div', { className: 'kv-dd' }, h('button', { title: 'Insert Data Viz (Chart/Table/Diagram) & Asset Library', className: S.menu === 'ins' ? 'on' : '', onClick: () => { muatAset(); S.menu = S.menu === 'ins' ? null : 'ins'; emit() } }, '▤'),
+        S.menu === 'ins' ? h(MenuSisip) : null),
+      h('div', { className: 'kv-dd' }, h('button', { title: 'New artboard or Smart Resize', onClick: () => { S.menu = S.menu === 'ab' ? null : 'ab'; emit() } }, '⊞', h('span', { className: 'kv-lbl2' }, ' Artboard')),
+        S.menu === 'ab' ? h('div', { className: 'kv-menu kv-abmenu', ref: tempelMenu(false) },
+          h('div', { className: 'kv-mhead' }, 'New artboard'),
+          PRESET.map(p => h('button', { key: p.nama, onClick: () => tambahArtboard(p) }, h('b', null, p.nama), h('span', null, `${p.w}×${p.h}`))),
+          h('div', { className: 'kv-mhead' }, 'Smart Resize (copy active)'),
+          RESIZE_PRESET.map(p => h('button', { key: 'r-' + p.nama, onClick: () => smartResizeUI(p) }, h('b', null, '⇄ ' + p.nama), h('span', null, `${p.w}×${p.h}`)))) : null)),
     h('div', { className: 'kv-tools' },
       h('button', { title: 'Undo (Ctrl+Z)', disabled: !S.undo.length, onClick: undo }, '↶'), h('button', { title: 'Redo (Ctrl+Y)', disabled: !S.redo.length, onClick: redo }, '↷')),
     h('div', { style: { flex: 1 } }),
+    h('div', { className: 'kv-dd' }, h('button', { className: 'kv-ghost', title: 'Brand Kits (colors, fonts, apply)', onClick: () => { muatBrand(); S.menu = S.menu === 'brand' ? null : 'brand'; emit() } },
+      '🎨', h('span', { className: 'kv-lbl' }, br ? ` ${br.name.slice(0, 12)}` : ' Brand')),
+      S.menu === 'brand' ? h(MenuBrand) : null),
+    h('div', { className: 'kv-dd' }, h('button', { className: 'kv-qa ' + qaCls, title: 'Live Visual QA Score & Inspector', onClick: () => { S.menu = S.menu === 'qa' ? null : 'qa'; emit() } },
+      (qa.masalah.length ? '⚠ ' : '✓ ') + 'QA ' + qa.skor),
+      S.menu === 'qa' ? h(MenuQa, { qa }) : null),
     h('button', { className: 'kv-ghost kv-ic', title: S.tema === 'terang' ? 'Dark theme' : 'Light theme', onClick: () => { S.tema = S.tema === 'terang' ? 'gelap' : 'terang'; S.ctx.storage.set('tema', S.tema); emit() } }, S.tema === 'terang' ? '☾' : '☀'),
     h('button', { className: 'kv-ghost', onClick: () => { S.present = Math.max(0, S.doc.artboards.findIndex(a => a.id === S.ab)); emit() } }, '▶', h('span', { className: 'kv-lbl' }, ' Present')),
     h('div', { className: 'kv-dd' }, h('button', { className: 'kv-ghost', onClick: () => { S.menu = S.menu === 'ex' ? null : 'ex'; emit() } }, '⤓', h('span', { className: 'kv-lbl' }, ' Export')),
       S.menu === 'ex' ? h('div', { className: 'kv-menu kanan', ref: tempelMenu(true) },
         h('div', { className: 'kv-mrow' }, 'Resolution', [1, 2, 3, 4].map(k => h('button', { key: k, className: S.skala === k ? 'on' : '', onClick: () => { S.skala = k; emit() } }, k + 'x'))),
-        [['png', 'PNG', 'current artboard'], ['jpg', 'JPG', 'current artboard'], ['pdf', 'PDF', 'all artboards (deck)'], ['pdf1', 'PDF', 'current artboard'], ['svg', 'SVG', 'current artboard, editable'], ['json', 'Design file', '.kanvas.json'], ['folder', 'Save to folder…', 'copy the design to a folder'], ['salin', 'Copy PNG', 'to clipboard']]
+        [['png', 'PNG', 'current artboard'], ['jpg', 'JPG', 'current artboard'], ['pdf', 'PDF', 'all artboards (deck)'], ['pdf1', 'PDF', 'current artboard'], ['pptx', 'PowerPoint (.pptx)', 'all artboards, editable'], ['svg', 'SVG', 'current artboard, editable'], ['html', 'HTML / CSS', 'Flexbox code export'], ['react', 'Copy React JSX', 'to clipboard'], ['json', 'Design file', '.kanvas.json'], ['folder', 'Save to folder…', 'copy design + images'], ['salin', 'Copy PNG', 'to clipboard']]
           .map(([k, a, b]) => h('button', { key: k, onClick: () => ekspor(k) }, h('b', null, a), h('span', null, b)))) : null),
     diPane && S.ctx.runAction ? h('button', { className: 'kv-ghost kv-ic', title: 'Fold the canvas (Ctrl+J)', onClick: umpetin }, '⇥') : null,
     h('div', { className: 'kv-dd' }, h('button', { className: 'kv-agent', title: 'Comments for your agent', onClick: () => { S.menu = S.menu === 'kom' ? null : 'kom'; emit() } },
@@ -1740,7 +2210,7 @@ function Modal() {
     h('div', { className: 'kv-mbox' }, h('b', null, m.judul), m.pesan ? h('p', null, m.pesan) : null,
       m.input !== undefined ? h('textarea', { autoFocus: true, value: v, rows: 4, onChange: e => setV(e.target.value), onKeyDown: e => { e.stopPropagation(); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { tutup(); m.aksi(v) } } }) : null,
       m.konten || null,
-      h('div', { className: 'kv-mact' }, h(Button, { variant: 'secondary', size: 'sm', onClick: tutup }, 'Cancel'), m.ok ? h(Button, { size: 'sm', onClick: () => { tutup(); m.aksi?.(v) } }, m.ok) : null)))
+      m.tanpaAksi ? null : h('div', { className: 'kv-mact' }, h(Button, { variant: 'secondary', size: 'sm', onClick: tutup }, 'Cancel'), m.ok ? h(Button, { size: 'sm', onClick: () => { tutup(); m.aksi?.(v) } }, m.ok) : null)))
 }
 function Presentasi() {
   const ref = useRef(null), [sz, setSz] = useState({ w: innerWidth, h: innerHeight })
@@ -1767,10 +2237,10 @@ function PilihRuang() {
 // ---------- BERANDA ----------
 // Panggung navy: brief langsung ke agent + demo hidup agent menggambar (satu-satunya animasi di halaman).
 const BRIEF_CEPAT = [
-  ['Event poster (A4)', 'An A4 poster for a design workshop on Saturday: modern and warm, with date, time, venue and a sign-up button.'],
-  ['5-slide pitch deck', 'A 5-slide pitch deck for our startup: cover, problem, solution, traction, closing. Clean and confident.'],
-  ['Instagram promo', 'A 4:5 Instagram post for 30% off this week: hero product in the middle, old price struck through, and a shop-now call to action.'],
-  ['Simple logo', 'A simple logo for our brand: a symbol made of basic shapes plus the name, in light and dark versions.']
+  ['Swiss editorial poster', 'Design an A4 Swiss editorial exhibition poster for "Form & Signal 2026" — asymmetric grid, crisp hairlines, bold Syne typography, vermilion accent, verified with Visual QA.'],
+  ['Data-driven deck (.pptx)', 'Build a 6-slide corporate investor presentation with KPI stats, a quarterly revenue bar chart, and a comparison table, then export an editable PowerPoint (.pptx).'],
+  ['Multi-format campaign', 'Create a coordinated campaign pack (IG Feed, IG Story, Web Banner, and 4-slide Carousel) for our product launch using our active Brand Kit.'],
+  ['Landing hero → React', 'Design a modern SaaS landing hero banner (1440×600) using auto-layout frames, then export clean React + Tailwind code via kanvas_to_code.']
 ]
 const GRUP_UKURAN = [['Presentation', ['Slide 16:9', 'Slide 4:3']], ['Print', ['A4 Portrait', 'A4 Landscape', 'A3 Portrait', 'A2 Portrait', 'A1 Portrait']], ['Social media', ['IG Feed 4:5', 'IG Square', 'IG Story 9:16']]]
 function DemoAgen() {
@@ -1808,24 +2278,43 @@ function muatTerakhir() {
 const waktuLalu = ms => { const d = (Date.now() - ms) / 60000; return d < 1 ? 'just now' : d < 60 ? Math.round(d) + ' min ago' : d < 1440 ? Math.round(d / 60) + ' h ago' : Math.round(d / 1440) + ' days ago' }
 const muatKotak = (ab, W, H) => Math.round(ab.w / ab.h > W / H ? W : H * ab.w / ab.h)
 function Mulai() {
-  const [brief, setBrief] = useState(''), [judul, setJudul] = useState('')
-  useEffect(() => { muatFont('Bricolage Grotesque', 800); muatTemplate() }, [])
-  useEffect(() => { muatTerakhir() }, [S.files.join('|'), S.folder?.id])
-  const kirim = () => { if (brief.trim()) mintaAgentBaru(brief.trim()) }
+  const [brief, setBrief] = useState(''), [judul, setJudul] = useState(''), [gaya, setGaya] = useState('auto')
+  useEffect(() => { muatFont('Bricolage Grotesque', 800); muatTemplate(); muatBrand(); muatAset() }, [])
+  useEffect(() => { muatTerakhir(); muatBrand(); muatAset() }, [S.files.join('|'), S.folder?.id])
+  const brands = daftarBrand(), defBr = S.brands?.defaultId
+  const kirim = () => { if (brief.trim()) mintaAgentBaru(brief.trim(), gaya, defBr || '') }
   const terakhir = (TERAKHIR.daftar || []).filter(x => S.files.includes(x.f))
   for (const x of terakhir) terapkanTata(x.doc)   // auto-layout pratinjau dihitung di browser
   return h('div', { className: 'kv-start' },
     h('section', { className: 'kv-panggung' },
       h('div', { className: 'kv-panggung-kiri' },
         h('div', { className: 'kv-merek' }, h(Logo), h('span', null, 'Kanvas Studio'), h('span', { className: 'kv-merek-isi' }), h(PilihRuang)),
-        h('h1', null, 'You write the brief.', h('br'), 'Your agent draws it.'),
-        h('p', null, 'Posters, decks, social posts and logos. Watch every step on the canvas and jump in to edit at any time.'),
+        h('h1', null, 'Design anything.', h('br'), 'Your agent draws it.'),
+        h('p', null, 'Adaptive Design Intelligence, multi-brand Brand Kits, native charts & decks (.pptx), Smart Resize, and Visual QA — 100% free, open-source, and local-first.'),
         h('div', { className: 'kv-brief' },
-          h('textarea', { rows: 2, value: brief, placeholder: 'For example: an A4 poster for 30% off at a coffee shop, warm colors', onChange: e => setBrief(e.target.value),
+          h('textarea', { rows: 2, value: brief, placeholder: 'For example: a Swiss editorial A4 exhibition poster, or a 6-slide Q4 investor deck with bar chart', onChange: e => setBrief(e.target.value),
             onKeyDown: e => { e.stopPropagation(); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); kirim() } } }),
           h('button', { className: 'kv-brief-kirim', disabled: !brief.trim(), onClick: kirim }, 'Send to agent')),
+        h('div', { className: 'kv-gaya-bar' },
+          h('span', null, 'Art direction:'),
+          GAYA_ARAH.map(([k, l]) => h('button', { key: k, className: gaya === k ? 'on' : '', onClick: () => setGaya(k) }, l))),
         h('div', { className: 'kv-chips' }, BRIEF_CEPAT.map(([l, b]) => h('button', { key: l, onClick: () => setBrief(b) }, l)))),
       h(DemoAgen)),
+    h('section', { className: 'kv-bag' },
+      h('div', { className: 'kv-bag-head' }, h('h2', null, 'Brand Kits'), h('button', { className: 'kv-mini', onClick: () => bukaModalBrand(null) }, '+ New Brand Kit')),
+      h('div', { className: 'kv-brgrid' },
+        brands.map(b => {
+          const c = b.colors || {}, cols = [c.background, c.surface, c.text, c.accent || c.primary].filter(Boolean)
+          const isDef = b.id === defBr
+          return h('div', { key: b.id, className: 'kv-bcard' + (isDef ? ' on' : '') },
+            h('div', { className: 'kv-bcard-top' },
+              h('b', null, b.name),
+              isDef ? h('em', { className: 'kv-tag' }, 'Default') : h('button', { className: 'kv-blink', onClick: () => simpanBrandStore({ defaultId: b.id, map: S.brands.map }) }, 'Set default')),
+            h('div', { className: 'kv-bswatch' }, cols.map((hx, i) => h('i', { key: i, style: { background: hx }, title: hx }))),
+            h('div', { className: 'kv-bcard-meta' }, h('span', null, [b.fonts?.display, b.fonts?.body].filter(Boolean).join(' · ') || 'Custom fonts'),
+              h('button', { className: 'kv-blink', onClick: () => bukaModalBrand(b) }, 'Edit')))
+        }),
+        h('button', { className: 'kv-bcard kv-badd', onClick: () => bukaModalBrand(null) }, h('b', null, '+ Add Brand Kit'), h('span', null, 'Save colors, fonts & art direction')))),
     terakhir.length ? h('section', { className: 'kv-bag' },
       h('h2', null, 'Continue'),
       h('div', { className: 'kv-rak kv-rak-gulir' }, terakhir.map(x => h('button', { key: x.f, className: 'kv-karya', onClick: () => buka(x.f) },
@@ -1848,11 +2337,14 @@ function Mulai() {
         h('div', null, nama.map(n => PRESET.find(p => p.nama === n)).filter(Boolean).map(p => h('button', { key: p.nama, className: 'kv-ukuran-btn', onClick: () => desainBaru(judul || p.nama, p) },
           h('i', { style: { width: muatKotak(p, 54, 54), height: Math.round(muatKotak(p, 54, 54) * p.h / p.w) } }),
           h('b', null, p.nama.replace(' Portrait', '')), h('span', null, `${p.w} × ${p.h}`)))))))),
-    S.doc ? h('div', null, h(Button, { variant: 'secondary', size: 'sm', onClick: () => { S.fase = 'siap'; emit() } }, 'Back to design')) : null)
+    S.doc ? h('div', null, h(Button, { variant: 'secondary', size: 'sm', onClick: () => { S.fase = 'siap'; emit() } }, 'Back to design')) : null,
+    h('footer', { className: 'kv-homefoot' },
+      h('span', null, 'Kanvas Studio v0.3.0 · Free forever · MIT Open Source · Local first'),
+      h('a', { href: 'https://github.com/sponsors/ranggaoscar', target: '_blank', rel: 'noopener noreferrer' }, '♥ Support on GitHub')))
 }
 
 function KanvasApp({ diPane } = {}) {
-  useEffect(() => { KANVAS.terbuka++; return () => { KANVAS.terbuka-- } }, [])
+  useEffect(() => { KANVAS.terbuka++; muatBrand(); muatAset(); return () => { KANVAS.terbuka-- } }, [])
   useStore()
   const root = useRef(null)
   const kunci = e => {
@@ -2257,6 +2749,55 @@ const CSS = `
 @keyframes kvprog{0%{left:-30%}100%{left:100%}}
 .kv-agen-selesai .kv-agen-bar{background:linear-gradient(135deg,#0b8f73,#118AB2)}
 @media (prefers-reduced-motion: reduce){.kv-agen,.kv-agen *,.kv-scan,.kv-scan *,.kv-kerja,.kv-kerja *{animation:none!important;transition:none!important}.kv-scan-band{top:auto;bottom:0}}
+/* v0.3.0 UI: Art Direction pills, Brand Kit cards/drawer, Data Viz/Smart Resize menus, Live QA badge, subtle Support footer */
+.kv-gaya-bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px;color:#9BA2CE}
+.kv-gaya-bar button{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#C9CCE8;border-radius:999px;padding:3px 9px;font:600 11px "Plus Jakarta Sans",system-ui}
+.kv-gaya-bar button:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+.kv-gaya-bar button.on{background:#FF5A3C;border-color:#FF5A3C;color:#fff}
+.kv-bag-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.kv-mini{border:1px solid var(--ui-stroke-secondary);background:var(--ui-bg-primary);color:inherit;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700}
+.kv-mini:hover{border-color:var(--kv-acc);color:var(--kv-acc)}
+.kv-brgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px}
+.kv-bcard{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-bg-primary);text-align:left}
+.kv-bcard.on{border-color:var(--kv-acc);box-shadow:0 0 0 1px var(--kv-acc)}
+.kv-bcard-top,.kv-bcard-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kv-bcard-top b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv-bcard-meta span{font-size:11px;color:var(--ui-text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv-badd{border-style:dashed;justify-content:center;align-items:center;text-align:center;color:var(--ui-text-secondary);min-height:92px}
+.kv-badd:hover{border-color:var(--kv-acc);color:var(--kv-acc)}
+.kv-badd span{font-size:11px;color:var(--ui-text-tertiary)}
+.kv-bswatch{display:flex;gap:6px}
+.kv-bswatch i,.kv-bswatch button{width:22px;height:22px;border-radius:6px;border:1px solid rgba(16,22,52,.16);padding:0;display:inline-block}
+.kv-bswatch button:hover{transform:scale(1.12)}
+.kv-tag{font-style:normal;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;background:rgba(255,90,60,.14);color:var(--kv-acc);margin-left:6px}
+.kv-blink{border:0;background:transparent;color:var(--kv-acc);font-size:11px;font-weight:700;padding:0}
+.kv-blink:hover{text-decoration:underline}
+.kv-bmenu,.kv-qmenu{width:300px;max-height:66vh;overflow:auto;padding:10px!important;gap:8px!important}
+.kv-smenu,.kv-abmenu{max-height:68vh;overflow:auto}
+.kv-bitem{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid var(--ui-stroke-secondary)}
+.kv-bitem.on{border-color:var(--kv-acc)}
+.kv-bhead{display:flex;flex-direction:column;gap:2px}
+.kv-bhead span{font-size:10.5px;color:var(--ui-text-tertiary)}
+.kv-bact{display:flex;gap:6px}
+.kv-bact button{flex:1;border:1px solid var(--ui-stroke-secondary);background:transparent;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700}
+.kv-bact button.utama{background:#101634;border-color:#101634;color:#fff}
+.kv-bform{display:flex;flex-direction:column;gap:10px}
+.kv-bform input[type=color]{height:32px;padding:2px}
+.kv-mhead{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ui-text-tertiary);padding:6px 9px 3px}
+.kv-mempty{font-size:11.5px;color:var(--ui-text-tertiary);padding:6px 9px;line-height:1.4}
+.kv-qa{height:28px;padding:0 10px;border-radius:8px;border:1px solid transparent;font-weight:800;font-size:11.5px;font-variant-numeric:tabular-nums}
+.kv-qa.ok{background:rgba(6,167,125,.14);color:#068a67;border-color:rgba(6,167,125,.3)}
+.kv-qa.warn{background:rgba(217,119,6,.14);color:#b45309;border-color:rgba(217,119,6,.3)}
+.kv-qa.err{background:rgba(229,72,77,.14);color:#d92d34;border-color:rgba(229,72,77,.35)}
+.kv-qstat{font-size:11px;font-weight:700;color:var(--ui-text-tertiary)}
+.kv-qmet{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:5px 7px;border-radius:7px;background:var(--ui-bg-primary);border:1px solid var(--ui-stroke-secondary)}
+.kv-qsec{display:flex;flex-direction:column;gap:4px;font-size:11.5px}
+.kv-qsec b{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ui-text-tertiary)}
+.kv-qsec.err b,.kv-qsec.err p{color:#d92d34}
+.kv-qsec p{margin:0;line-height:1.4}
+.kv-homefoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding-top:14px;border-top:1px solid var(--ui-stroke-secondary);font-size:11.5px;color:var(--ui-text-tertiary)}
+.kv-homefoot a{color:var(--kv-acc);text-decoration:none;font-weight:700}
+.kv-homefoot a:hover{text-decoration:underline}
 `
 
 /* =============== 10. DAFTAR KE HERMES =============== */
@@ -2286,4 +2827,4 @@ export default {
 }
 
 /* =============== 11. ENGINE (dipakai app lokal & perender untuk agent) =============== */
-export const engine = { S, emit, buka, urlGambarAman, sinkronKomponen, bidangDariTitik, terapkanTata, urutPohon, muatFontDoc, fontGagal, namaFont, normalisasi, layoutTeks, tinggi, fontStr, gambarAb, svgAb, buatPdf, keBlob, GOOGLE_FONTS, LOGO_SVG }
+export const engine = { S, emit, buka, urlGambarAman, sinkronKomponen, bidangDariTitik, terapkanTata, urutPohon, muatFontDoc, fontGagal, namaFont, normalisasi, layoutTeks, tinggi, fontStr, gambarAb, svgAb, buatPdf, buatPdfBytes, keBlob, GOOGLE_FONTS, LOGO_SVG }

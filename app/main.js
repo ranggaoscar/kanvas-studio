@@ -111,16 +111,24 @@ async function render(p) {
     if (/^data:/i.test(e.src) || (/^https?:/i.test(e.src) && engine.urlGambarAman(e.src))) gambarAda.add(e.src)
     else if (!/^https?:/i.test(e.src) && (await files.stat('data', e.src)).exists) gambarAda.add(e.src)
   }
-  const cek = periksa(doc, { layoutTeks: engine.layoutTeks, fontStr: engine.fontStr, adaGambar: s => gambarAda.has(s), fontGagal: engine.fontGagal })
+  let brand = null
+  if (doc.brand) {
+    const br = await api('brands')
+    if (br.ok && Array.isArray(br.brands)) brand = br.brands.find(b => b.id === doc.brand) || null
+  }
+  const cek = periksa(doc, { layoutTeks: engine.layoutTeks, fontStr: engine.fontStr, adaGambar: s => gambarAda.has(s), fontGagal: engine.fontGagal, brand })
   const pilih = doc.artboards.filter(ab => !target || ab.id === target)
   const hasil = []
   if (format === 'pdf') {
     const hal = []
     for (const ab of pilih) {
       const c = await engine.gambarAb(ab, skala)
-      hal.push({ w: ab.w, h: ab.h, pw: c.width, ph: c.height, jpg: new Uint8Array(await (await engine.keBlob(c, 'image/jpeg', 0.92)).arrayBuffer()) })
+      // decode JPEG synchronously via toDataURL so Chrome --dump-dom never dumps before async toBlob finishes
+      const raw = atob(c.toDataURL('image/jpeg', 0.92).split(',')[1])
+      const jpg = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) jpg[i] = raw.charCodeAt(i)
+      hal.push({ w: ab.w, h: ab.h, pw: c.width, ph: c.height, jpg })
     }
-    const buf = new Uint8Array(await engine.buatPdf(hal).arrayBuffer())
+    const buf = engine.buatPdfBytes(hal)
     let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000))
     hasil.push({ id: 'semua', data: 'data:application/pdf;base64,' + btoa(bin) })
   } else for (const ab of pilih) {

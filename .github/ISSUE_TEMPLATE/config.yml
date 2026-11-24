@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Roadmap (P0 / P1 / P2)
+    url: https://github.com/ranggaoscar/kanvas-studio/blob/main/docs/ROADMAP.md
+    about: See what is shipped and what is planned next for Kanvas Studio.
+  - name: Sponsor Kanvas Studio
+    url: https://github.com/sponsors/ranggaoscar
+    about: Support free, open-source, local-first development through voluntary GitHub Sponsors.

@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a new capability, aesthetic direction, template, or roadmap contribution
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Kanvas Studio is 100% free, open-source (MIT), and local-first. Check [docs/ROADMAP.md](https://github.com/ranggaoscar/kanvas-studio/blob/main/docs/ROADMAP.md) first to see what is already planned.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Design Intelligence / Art Direction
+        - Brand Kit
+        - Visual Quality Assurance
+        - Canvas Editor & Export
+        - MCP Server & Agent Tools
+        - Templates / Community Ecosystem
+        - P1 / P2 Roadmap Feature
+        - Documentation / Installation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Explain the workflow or design need you are trying to address.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe how you imagine this working for AI agents and/or human users on the canvas.
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be interested in helping implement this via a pull request

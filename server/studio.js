@@ -16,6 +16,9 @@ import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { RUANG, jalur, tulisAtomik, statusAgen, siapkanRuang, bacaDesain } from './ruang.js'
 import { envMinimal } from './render.js'
+import { listBrands } from './brand.js'
+import { listAssets } from './assets.js'
+import { listCommunity } from './community.js'
 
 const AKAR = join(dirname(fileURLToPath(import.meta.url)), '..')
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -67,6 +70,9 @@ export const gambarLokal = doc => [...new Set((doc.artboards || []).flatMap(ab =
 const API = {
   'GET info': () => ({ ok: true, ruangKerja: RUANG, build: BUILD, versi: JSON.parse(readFileSync(join(AKAR, 'package.json'), 'utf8')).version }),
   'GET agen': () => statusAgen(),
+  'GET brands': () => ({ ok: true, ...listBrands() }),
+  'GET assets': q => ({ ok: true, ...listAssets({ category: q.get('category') || undefined, tag: q.get('tag') || undefined, search: q.get('search') || undefined }) }),
+  'GET community': () => ({ ok: true, ...listCommunity() }),
   'GET list': q => {
     const dir = q.get('dir') || '', abs = dir ? jalur(dir) : RUANG
     if (!existsSync(abs)) return { ok: true, entries: [] }

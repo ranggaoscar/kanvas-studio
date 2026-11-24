@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a bug in Kanvas Studio (Hermes Desktop plugin, standalone local studio, MCP server, or Visual QA)
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve Kanvas Studio! Please share enough detail so we can reproduce the issue.
+  - type: dropdown
+    id: mode
+    attributes:
+      label: How are you running Kanvas Studio?
+      options:
+        - Hermes Desktop plugin
+        - Standalone local MCP (Claude Code / Codex / Cursor / other)
+        - Standalone local web studio (`node bin/kanvas.js`)
+        - CLI render (`node bin/kanvas.js render`)
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Node.js version, browser (Chrome/Edge), and Hermes version if applicable
+      placeholder: e.g. Windows 11, Node v22.14.0, Chrome 135, Hermes v0.23.3
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly, including what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Commands, MCP calls, or UI clicks that trigger the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, Visual QA output, or screenshots
+      description: Paste relevant error output or attach screenshots (please redact any private data).

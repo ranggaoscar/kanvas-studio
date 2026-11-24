@@ -1,9 +1,21 @@
 {
   "name": "kanvas-studio",
-  "version": "0.2.0",
-  "description": "A free, local design engine any AI agent (Claude Code, Codex, Hermes) can drive over MCP. Decks, posters, logos, social posts: watch the agent draw live on the canvas.",
+  "version": "0.3.0",
+  "description": "Free, open-source, local-first visual design engine for AI agents over MCP — Design Intelligence, Brand Kits, Visual QA, Smart Resize, Marketing Campaigns, Data Viz, Presentation/PPTX export, Design-to-Code, Asset Library, and Community Ecosystem.",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://github.com/ranggaoscar/kanvas-studio#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ranggaoscar/kanvas-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ranggaoscar/kanvas-studio/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/ranggaoscar"
+  },
   "bin": {
     "kanvas": "bin/kanvas.js"
   },
@@ -16,7 +28,11 @@
     "docs",
     "desktop",
     "skills",
-    "templates"
+    "templates",
+    "plugin.json",
+    "mcp.json",
+    "install.sh",
+    "install.ps1"
   ],
   "engines": {
     "node": ">=18"
@@ -25,13 +41,20 @@
     "build": "node scripts/build.js",
     "start": "node bin/kanvas.js",
     "mcp": "node bin/kanvas.js mcp",
-    "test": "node --test --test-concurrency=1 test/*.test.js"
+    "doctor": "node bin/kanvas.js doctor",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "design",
     "canvas",
     "mcp",
     "ai-agent",
+    "art-direction",
+    "brand-kit",
+    "pptx",
+    "dataviz",
+    "design-to-code",
     "claude-code",
     "codex",
     "hermes",

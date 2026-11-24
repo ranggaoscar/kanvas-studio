@@ -88,7 +88,8 @@ def periksa(doc, folder):
         W, H = ab.get("w") or 0, ab.get("h") or 0
         els = ab.get("elemen") or []
         if not ab.get("id"): masalah.append(f"{nm} artboard has no id.")
-        kecil = []
+        kecil, fonts_used, text_sizes = [], set(), []
+        safe_margin = max(16, round(min(W, H) * 0.032))
         for i, el in enumerate(els):
             eid = el.get("id")
             lab = f'{nm} {eid or "#" + str(i)} ({el.get("tipe")})'
@@ -99,7 +100,8 @@ def periksa(doc, folder):
             if el.get("sembunyi"): continue
             x0, y0, x1, y1 = kotak(el)
             dekor = el.get("tipe") in ("kotak", "elips", "gambar", "path") and ((el.get("opacity", 1) < 0.6) or (x1 - x0) * (y1 - y0) > W * H * 0.6)
-            if not dekor and (x0 < -2 or y0 < -2 or x1 > W + 2 or y1 > H + 2):
+            outside = x0 < -2 or y0 < -2 or x1 > W + 2 or y1 > H + 2
+            if not dekor and outside:
                 (masalah if el.get("tipe") == "teks" else saran).append(f"{lab}: outside the artboard (x {x0:.0f}..{x1:.0f}, y {y0:.0f}..{y1:.0f} of {W}×{H}).")
             if el.get("tipe") == "gambar":
                 src = el.get("src") or ""
@@ -108,9 +110,16 @@ def periksa(doc, folder):
                     masalah.append(f"{lab}: image file not found: {src}")
             if el.get("tipe") == "teks":
                 uk = el.get("ukuran") or 32
+                text_sizes.append(uk)
+                if el.get("font"): fonts_used.add(str(el.get("font")).strip())
                 n = TINGGI_NYATA[eid][1] if eid in TINGGI_NYATA else len(baris_teks(el))
                 minimal = max(12, round(min(W, H) / 60))
                 if uk < minimal: kecil.append((uk, eid))
+                lh = el.get("lh") if el.get("lh") is not None else 1.2
+                if n >= 2 and lh < 0.85: masalah.append(f"{lab}: line-height {lh} causes vertical line collisions on {n}-line text.")
+                if not outside and not el.get("rotasi") and W >= 300 and H >= 300:
+                    edge = min(x0, y0, W - x1, H - y1)
+                    if edge < safe_margin: saran.append(f"{lab}: tight edge margin ({edge:.0f}px; aim for ≥{safe_margin}px).")
                 if uk >= 60 and n > 3: saran.append(f"{lab}: headline wraps to {n} lines; widen w or reduce ukuran.")
                 # kontras dengan latar di bawah titik tengah teks
                 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
@@ -143,6 +152,12 @@ def periksa(doc, folder):
             minimal = max(12, round(min(W, H) / 60))
             kecil.sort()
             saran.append(f"{nm} {len(kecil)} texts under ≈{minimal}px (smallest {kecil[0][0]}px: {', '.join(i for _, i in kecil[:6])}{'…' if len(kecil) > 6 else ''}), hard to read when presented or printed.")
+        if len(fonts_used) > 3:
+            saran.append(f"{nm} uses {len(fonts_used)} font families ({', '.join(sorted(fonts_used))}); consolidate to 2–3 families.")
+        if len(text_sizes) >= 3:
+            s_sz = sorted(text_sizes)
+            if s_sz[-1] / max(1, s_sz[len(s_sz) // 2]) < 1.3 and (s_sz[-1] - s_sz[0]) < 12:
+                saran.append(f"{nm} flat typographic hierarchy ({s_sz[0]}–{s_sz[-1]}px); strengthen headline scale.")
     return masalah, saran
 
 # ---------- preview PNG (mesin gambar sama dengan plugin) ----------
@@ -276,8 +291,9 @@ def main():
         files, err = preview(doc, path, t)
     masalah, saran = periksa(doc, os.path.dirname(os.path.abspath(path)))
     n_el = sum(len(a.get("elemen") or []) for a in doc.get("artboards", []))
+    skor = max(0, min(100, 100 - len(masalah) * 18 - min(30, len(saran) * 4))) if doc.get("artboards") else 0
     print("Text size: measured in the browser (accurate)" if TINGGI_NYATA else "Text size: estimated; run with --preview for accurate results")
-    print(f"File: {path}\nArtboards: {len(doc.get('artboards', []))} · elements: {n_el}\n")
+    print(f"File: {path}\nArtboards: {len(doc.get('artboards', []))} · elements: {n_el} · QA SCORE: {skor}/100\n")
     print(f"ISSUES ({len(masalah)}), fix these:" if masalah else "ISSUES: none ✓")
     for x in masalah: print("  ✗ " + x)
     print(f"\nSUGGESTIONS ({len(saran)}):" if saran else "\nSUGGESTIONS: none ✓")

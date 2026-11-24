@@ -1,18 +1,38 @@
 ![Kanvas Studio — Design anything. Your agent draws it.](assets/banner.png)
 
-**A free, local design engine driven by AI agents over MCP.**
-Pitch decks, posters, logos, and social graphics — watch your agent draw step by step, and jump in to edit anything yourself.
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-Kanvas%20Studio-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/ranggaoscar)
+[![License: MIT](https://img.shields.io/badge/License-MIT-101634.svg)](LICENSE)
 
-[Hermes Desktop](#use-inside-hermes-desktop) · [Claude Code](#use-locally-without-hermes-mcp) · [Codex](#use-locally-without-hermes-mcp) · [Cursor](#use-locally-without-hermes-mcp) · [Any MCP Agent](https://modelcontextprotocol.io) · [MIT License](LICENSE)
+# Kanvas Studio
+
+**Design anything. Your agent draws it.**
+**Free forever. Open source. Local first.**
+*Built for AI agents. Designed for everyone. Supported by the community.*
+
+Kanvas Studio is an **agent-native visual design engine** — not just another template editor. AI agents (**Hermes Desktop**, **Claude Code**, **Codex**, **Cursor**, or any MCP client) art-direct, build multi-format campaigns and data-driven presentations, insert editable charts/tables/diagrams, Smart Resize across aspect ratios, run autonomous Visual QA, and export editable **PowerPoint (`.pptx`)**, **HTML/React/Tailwind code**, **PNG/JPG/SVG/PDF**, and **`.kanvas.json`** — all locally while you watch every step on a live canvas and edit anything yourself.
+
+**100% free, MIT open-source, and local-first — zero paywalls, zero subscriptions, zero premium tiers, zero cloud lock-in.** Funded strictly through voluntary community sponsorship and donations.
+
+[Hermes Desktop](#use-inside-hermes-desktop) · [Standalone MCP](#use-locally-without-hermes-mcp) · [Design Intelligence](#design-intelligence) · [MCP Tools (22)](#agent-mcp-tools) · [Roadmap](#roadmap) · [Support Kanvas Studio](#support-kanvas-studio)
 
 ---
 
 ## See it in action
 
-### Home screen & ready-made templates
-Write a brief for your agent, resume recent work, or start from one of 6 built-in templates (startup pitch deck, A4 event poster, Instagram 4:5 promo, 9:16 story, YouTube thumbnail, pricing slide).
+### Home screen, Art Direction lenses & multi-brand Brand Kits
+Pick an aesthetic direction (*Swiss Editorial*, *Luxury*, *Brutalist*, *Cinematic*, *Corporate*, *Experimental*, or *Auto*), manage reusable local **Brand Kits** (colors, fonts, logos, direction), resume recent work, or start from built-in/community templates.
 
-![Kanvas Studio home screen with agent brief box and template gallery](assets/screenshot-home.png)
+![Kanvas Studio home screen with Art Direction selector, Brand Kits, and template gallery](assets/screenshot-home.png)
+
+### Data-driven Presentations, native charts & Live Visual QA (`100/100`)
+Generate structured multi-slide decks with editable native **Bar, Horizontal Bar, Line, Donut, Table, and Diagram** visuals — verified automatically by the **Visual QA engine** (0–100 score, whitespace, margins, contrast, hierarchy, and font discipline) both in the canvas toolbar and over MCP.
+
+![Kanvas Studio data-driven investor slide with native bar chart and Live Visual QA 100/100 popover](assets/screenshot-dataviz-deck.png)
+
+### Multi-format Campaigns, Smart Resize & Export (`.pptx`, `HTML/CSS`, `React`)
+Turn one brief + Brand Kit into coordinated **IG Feed, IG Story, Carousel, A4 Poster, Web Banner, and YouTube Thumbnail** artboards, Smart Resize any artboard across aspect ratios, and export editable **PowerPoint (`.pptx`)**, **Flexbox HTML/CSS**, **React JSX**, **PDF**, **SVG**, or **PNG/JPG (`1×–4×`)**.
+
+![Kanvas Studio multi-format Swiss Editorial campaign pack and upgraded Export menu showing PowerPoint PPTX, HTML/CSS, and React JSX](assets/screenshot-campaign.png)
 
 ### Live multi-artboard canvas, layers & Figma-style components
 Every agent edit appears live with a moving cursor, work frame, and artboard scan. Reusable **components** keep repeated cards, stats, and buttons in sync while allowing per-copy overrides.
@@ -20,7 +40,7 @@ Every agent edit appears live with a moving cursor, work frame, and artboard sca
 ![Kanvas Studio multi-slide pitch deck canvas with layers and reusable components](assets/screenshot-canvas.png)
 
 ### Full visual editor with auto-layout, Google Fonts & 2,100+ icons
-Jump into the canvas whenever you like — edit typography (any Google Font), solid/gradient fills, Figma-style auto-layout frames, vector paths (Pen tool), and Lucide icons directly.
+Jump into the canvas whenever you like — edit typography (any Google Font), solid/gradient fills, Figma-style auto-layout frames, vector paths (Pen tool), native charts/tables, and Lucide icons directly.
 
 ![Kanvas Studio visual editor showing auto-layout group selection and inspector panel](assets/screenshot-editor.png)
 
@@ -31,30 +51,46 @@ Press **C**, click any spot on an artboard, leave a note, and click **Send to ag
 
 ---
 
+## Design Intelligence
+
+Most agent design tools produce repetitive, cookie-cutter slides because their skills hardcode a single gradient and fixed coordinates. Kanvas Studio includes an adaptive **Design Intelligence** engine (`kanvas_art_direction`) so agents choose aesthetics, proportional grids, typography, and composition from the user's actual brief and brand context:
+
+- **7 open reference lenses (freely mixable, extensible via community JSON, never creative limits):**
+  - **Swiss Editorial** — modular grids, crisp hairlines, asymmetric typography, paper/ink + 1 decisive signal color
+  - **Luxury Minimalism** — refined serif display, tracked uppercase sans, generous 10–14% margins, quiet authority
+  - **Neo-Brutalism** — raw monumental display type, thick solid borders, stark geometric blocks, high-voltage tension
+  - **Cinematic** — atmospheric full-bleed visuals, dramatic scale contrast, whisper-quiet tracked captions
+  - **Corporate Premium** — insight-first executive clarity, oversized tabular KPIs, disciplined structural rules
+  - **Experimental** — sculptural vector `path` geometry, intentional diagonal/rotated tension, chromatic surprises
+  - **Contemporary Product** — modern neo-grotesque type, varied-weight bento layouts, crisp Lucide line icons
+- **Multi-Brand Brand Kit (`kanvas_brand`):** Save unlimited local brand identities (`<workspace>/brands/`) with colors, fonts, logos, reusable visual assets, voice, and guidelines — then weave them directly into art direction or apply them to designs with automatic contrast safety.
+- **Autonomous Visual Quality Assurance (`kanvas_view`):** Renders PNGs with the exact same engine as the live canvas and produces a **Visual QA Score (0–100)**, per-artboard metrics (whitespace, margins, font count, type hierarchy ratio), multi-point & worst-case gradient WCAG contrast checks, near-miss alignment detection, overlap/overflow checks, and Brand Kit font consistency checks so agents self-correct before finishing.
+
+---
+
 ## Key features
 
-- **Live agent choreography** — watch the agent cursor and work frame move to each element as it builds your design. No black box.
-- **Visual self-check for agents** — `kanvas_view` renders PNGs using the exact same engine as the canvas and reports automatic **ISSUES** (overlapping text, card/artboard overflow, low contrast, missing images) and **SUGGESTIONS**.
-- **Real vectors & Pen tool** — SVG `path` elements for logos, curves, arrows, and shapes; click for corner points, drag for Bezier curves, double-click any vector to edit points.
-- **Groups + Auto-Layout** — Figma-style horizontal/vertical stacks (`baris`/`kolom`), gap, padding, hug (`peluk`), and fill (`isi`).
-- **Components** — edit a main component once and every copy updates automatically while preserving text, color, and icon overrides.
-- **2,100+ icons & every Google Font** — bundled Lucide icon library plus automatic loading of any Google Font by name.
-- **Comments** — pin notes on any spot or element and hand them to your agent in one click.
-- **One-click export** — PNG / JPG (`1×–4×`), editable SVG, multi-page PDF (full deck or single artboard), clipboard PNG, or `.kanvas.json` + images.
-- **100% local & free** — no account, no cloud upload, no telemetry.
+- **P0 — Design Intelligence, Brand Kit & Visual QA:** Adaptive art direction (`kanvas_art_direction`), multi-brand local Brand Kits (`kanvas_brand`), and quantitative Visual QA (`kanvas_view` with QA Score 0–100 and per-artboard metrics).
+- **P1 — Marketing Automation & Smart Resize:** Generate coordinated multi-format campaign sets and swipeable carousels from one brief (`kanvas_campaign`), or Smart Resize any artboard across aspect ratios with automatic stack reflow (`kanvas_resize`).
+- **P1 — Presentation Engine + Editable `.pptx` Export:** Build non-monotonous research/data-driven decks with speaker notes (`kanvas_presentation`) and export zero-dependency **editable PowerPoint (`.pptx`)** files (`kanvas_export { format: "pptx" }`) with real text boxes, shapes, gradients, vector paths, embedded images, and presenter notes.
+- **P1 — Native Data Visualization:** Insert editable `bar`, `hbar`, `line`, `donut`, `table`, and `diagram` primitives (`kanvas_dataviz`) built from standard Kanvas Studio vectors, groups, and text.
+- **P2 — Design-to-Code:** Export artboards to clean semantic **HTML/CSS**, **React (JSX + CSS)**, or **Tailwind** markup (`kanvas_to_code`) mapping auto-layout groups to genuine Flexbox.
+- **P2 — Reusable Asset Library & Community Ecosystem:** Searchable local asset library (`kanvas_assets`) for images and SVG marks, plus pure-JSON community templates, aesthetic directions, and workflows (`kanvas_community`, [docs/COMMUNITY.md](docs/COMMUNITY.md)).
+- **Live visual canvas:** Agent cursor choreography, Pen vector tool, Figma-style auto-layout (`tata`) & reusable components, 2,100+ bundled Lucide icons, any Google Font, canvas comment pins, and one-click export (`PNG`/`JPG` `1×–4×`, `SVG`, multi-page `PDF`, editable `PPTX`, `.kanvas.json`).
+- **100% free & local-first:** MIT licensed, zero runtime npm dependencies, zero Python dependencies, no accounts, no paywalls, no telemetry.
 
 ---
 
 ## Requirements
 
 - **Node.js 18+**
-- **Google Chrome or Microsoft Edge** (used locally in headless mode for PNG/PDF rendering via `kanvas_view`, `kanvas_export`, and `kanvas render`)
+- **Google Chrome or Microsoft Edge** (used locally in headless mode for PNG/JPG/PDF rendering and Visual QA via `kanvas_view`, `kanvas_export`, and `kanvas render`; `.pptx` and code export require no browser)
 
 ---
 
 ## Use inside Hermes Desktop
 
-Kanvas Studio ships as a **Portable Agent Plugin (`plugin.json` + `mcp.json` + `skills/` + `desktop/plugin.js`)**, so Hermes automatically wires up the **Desktop canvas tab**, the **13 `kanvas_*` MCP tools**, and the **`kanvas-studio` skill** on Windows, macOS, and Linux.
+Kanvas Studio ships as a **Portable Agent Plugin (`plugin.json` + `mcp.json` + `skills/` + `desktop/plugin.js`)**, so Hermes automatically wires up the **Desktop canvas tab**, all **22 `kanvas_*` MCP tools**, and the **`kanvas-studio` skill** on Windows, macOS, and Linux — with zero Python dependencies and zero npm runtime dependencies.
 
 ### Install from Hermes CLI or Desktop
 
@@ -70,17 +106,25 @@ Then enable **Kanvas Studio** under **Capabilities → Plugins** and restart Her
 
 - Open the canvas from **Kanvas Studio** in the sidebar, the **Kanvas** button in the status bar, the command palette, or **Ctrl+Shift+K**.
 - Closing the tab never disables the plugin — and as soon as your agent calls a Kanvas tool, the canvas tab opens automatically.
-- Designs live in Hermes's plugin data folder (`plugin-files/data/kanvas-studio`), shared automatically between the Desktop tab and the MCP server.
+- Designs, Brand Kits, Asset Library, and Community extensions live locally in Hermes's plugin data folder (`plugin-files/data/kanvas-studio`), shared automatically between the Desktop tab and the MCP server.
 
-#### Local development install on Windows (without Hermes plugin installer)
+#### Local development install (Windows, macOS, Linux)
 
-```powershell
+```bash
 git clone https://github.com/ranggaoscar/kanvas-studio
 cd kanvas-studio
+
+# Check environment (Node, Chrome/Edge, workspace):
+node bin/kanvas.js doctor
+
+# Windows (PowerShell):
 powershell -ExecutionPolicy Bypass -File .\install.ps1
+
+# macOS / Linux:
+bash ./install.sh
 ```
 
-Then reload plugins in Hermes Desktop (`Ctrl+K` → **Reload desktop plugins**).
+Then reload plugins in Hermes Desktop (`Ctrl+K` / `Cmd+K` → **Reload desktop plugins**).
 
 ---
 
@@ -88,17 +132,24 @@ Then reload plugins in Hermes Desktop (`Ctrl+K` → **Reload desktop plugins**).
 
 Use Kanvas Studio standalone with **Claude Code**, **Codex**, **Cursor**, or any MCP client. The MCP server starts the local studio automatically and opens it in your browser so you can watch live.
 
-### 1. Clone once (works on all Node/npm versions, including npm 12+)
+### 1. Clone once & verify environment
 
 ```bash
 git clone https://github.com/ranggaoscar/kanvas-studio
 cd kanvas-studio
 
+# Verify Node.js, Chrome/Edge, and workspace health:
+node bin/kanvas.js doctor
+
+# Print ready-to-paste MCP config for Claude Code, Codex, Cursor, or Hermes:
+node bin/kanvas.js init-mcp
+
 # Open the studio manually in your browser (http://127.0.0.1:4848):
 node bin/kanvas.js
 
-# Or render & lint a design file from the terminal:
+# Render & run Visual QA (or export editable PowerPoint) from the terminal:
 node bin/kanvas.js render design.kanvas.json
+node bin/kanvas.js render design.kanvas.json --format pptx
 ```
 
 > **Note for `npx` users:** If you run `npx -y github:ranggaoscar/kanvas-studio mcp`, npm 12+ (Node 24+) blocks Git URLs by default (`EALLOWGIT`) unless you pass `--allow-git=root` or use a local clone path (`node /path/to/kanvas-studio/bin/kanvas.js mcp`).
@@ -132,45 +183,62 @@ args = ["/absolute/path/to/kanvas-studio/bin/kanvas.js", "mcp"]
 }
 ```
 
-**Hermes manual `config.yaml` (if not using the bundled plugin)**
-
-```yaml
-mcp_servers:
-  kanvas:
-    command: node
-    args: ["/absolute/path/to/kanvas-studio/bin/kanvas.js", "mcp"]
-    timeout: 180
-    env:
-      KANVAS_NO_OPEN: "1"   # watch inside the Hermes Desktop canvas instead of a browser
-```
-
 Then ask your agent:
 
-> *"Create a 5-slide pitch deck for a developer analytics startup — modern dark cover, 3 feature cards, and a traction slide."*
+> *"Build a 6-slide Q4 investor presentation with a Swiss Editorial aesthetic, include a revenue bar chart and KPI table, check it with Visual QA, and export an editable PowerPoint (.pptx)."*
 
-The studio opens at `http://127.0.0.1:4848` (designs are saved in `~/KanvasStudio` by default, configurable via `KANVAS_HOME`).
+The studio opens at `http://127.0.0.1:4848` (designs, Brand Kits, Asset Library, and Community extensions live in `~/KanvasStudio` by default, configurable via `KANVAS_HOME`).
 
 ---
 
 ## Agent MCP tools
 
-| Tool | What it does |
-|---|---|
-| `kanvas_guide` | Format reference, element types, edit ops, typography scale, and layout recipes |
-| `kanvas_status` | Active workspace, open design, user's current selection (`terpilih`), open comments, and design list |
-| `kanvas_templates` | List built-in templates (`pitch-deck`, `poster-acara`, `ig-promo`, `ig-story`, `yt-thumbnail`, `harga`) |
-| `kanvas_create` | Create a new design from a preset (`slide`, `a4`, `ig-feed`, `ig-story`, `yt-thumbnail`, `logo`, …), custom size, or template |
-| `kanvas_read` | Read a design document as JSON |
-| `kanvas_edit` | Atomic edit operations: add / update / delete / reorder / group / ungroup / make component / detach |
-| `kanvas_view` | Render PNGs of artboards + automatic design checker (**ISSUES** and **SUGGESTIONS**) |
-| `kanvas_export` | Export to any folder as `png`, `jpg`, `svg`, `pdf`, or `kanvas` (editable `.kanvas.json` + local images) |
-| `kanvas_icons` | Search 2,100+ bundled Lucide line icons |
-| `kanvas_import_image` | Copy a local image (`png`/`jpg`/`webp`/`svg`/`gif`) into the workspace `gambar/` folder |
-| `kanvas_comments` | Read comments pinned by the user (artboard, position, target element) |
-| `kanvas_resolve_comment` | Mark comment(s) resolved with a short reply shown on the pin |
-| `kanvas_open` | Open the studio UI in the default browser |
+| Tool | Area | What it does |
+|---|---|---|
+| `kanvas_guide` | Core | Full document format, Design Intelligence, Brand Kit, and edit ops guide |
+| `kanvas_status` | Core | Active workspace, open design, user selection (`terpilih`), open comments, Brand Kits, assets, community counts |
+| `kanvas_art_direction` | **P0** | Contextual Art Direction Brief (aesthetic lens, proportional grid, type scale, palette, Brand Kit & community lenses) |
+| `kanvas_brand` | **P0** | Multi-brand Brand Kit manager (`list`, `get`, `save`, `set_default`, `import_asset`, `apply`, `delete`) |
+| `kanvas_view` | **P0** | Render PNGs + Visual QA (QA Score 0–100, metrics, multi-point/gradient contrast, **ISSUES**, **SUGGESTIONS**) |
+| `kanvas_campaign` | **P1** | Marketing Automation: one brief → multi-format campaign pack & swipeable carousel |
+| `kanvas_resize` | **P1** | Smart Resize across aspect ratios with automatic margin, type scale, and stack reflow |
+| `kanvas_presentation` | **P1** | Presentation Engine: structured multi-slide decks with charts, tables, diagrams, KPIs, and speaker notes |
+| `kanvas_dataviz` | **P1** | Native editable `bar`, `hbar`, `line`, `donut`, `table`, and `diagram` elements |
+| `kanvas_export` | **P1** | Export to `png`, `jpg`, `svg`, `pdf`, **editable `pptx`**, or `kanvas` (`.kanvas.json` + local images) |
+| `kanvas_to_code` | **P2** | Design-to-Code: semantic `html`, `react` (JSX + CSS), or `tailwind` with Flexbox auto-layout mapping |
+| `kanvas_assets` | **P2** | Reusable local Asset Library (`list`, `get`, `import`, `save_svg`, `delete`) |
+| `kanvas_community` | **P2** | Pure-JSON Community Ecosystem (`list`, `save_template`, `save_direction`, `save_workflow`, `get_workflow`, `delete`) |
+| `kanvas_create` | Core | Create a new design from preset, custom size, built-in/community template, or Brand Kit |
+| `kanvas_read` | Core | Read a design document as JSON |
+| `kanvas_edit` | Core | Atomic edits: add / update / delete / reorder / group / ungroup / make component / detach |
+| `kanvas_templates` | Core | List built-in and community starter templates |
+| `kanvas_icons` | Core | Search 2,100+ bundled Lucide line icons |
+| `kanvas_import_image` | Core | Copy a local image into the workspace `gambar/` folder |
+| `kanvas_comments` | Core | Read user-pinned comments (artboard, coordinates, target element) |
+| `kanvas_resolve_comment` | Core | Resolve comment(s) with a short reply displayed on the pin |
+| `kanvas_open` | Core | Open the studio UI in the default browser |
 
 Full document & operation spec: [docs/FORMAT.md](docs/FORMAT.md).
+
+---
+
+## Roadmap
+
+P0, P1, and P2 core capabilities are shipped in **v0.3.0**! Full details in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+| Priority | Feature | Focus | Status |
+|---|---|---|---|
+| **P0** | **Design Intelligence** | Adaptive art direction, proportional grids, typographic craft, 7 mixable aesthetic lenses | **Shipped (v0.3.0)** |
+| **P0** | **Brand Kit** | Multi-brand local storage (colors, fonts, logos, assets, guidelines) + contrast-safe apply + UI drawer | **Shipped (v0.3.0)** |
+| **P0** | **Visual Quality Assurance** | QA Score (0–100), metrics, multi-point/gradient contrast, margins, hierarchy, alignment, live UI badge | **Shipped (v0.3.0)** |
+| **P1** | **Marketing Automation** | One brief → coordinated multi-format campaign pack & swipeable carousel | **Shipped (v0.3.0)** |
+| **P1** | **Smart Resize** | Automatic cross-aspect-ratio layout recomposition & horizontal→vertical stack reflow | **Shipped (v0.3.0)** |
+| **P1** | **Presentation Engine** | Structured decks with zero-dependency **editable `.pptx` export** & speaker notes | **Shipped (v0.3.0)** |
+| **P1** | **Data Visualization** | Native editable `bar`, `hbar`, `line`, `donut`, `table`, and `diagram` primitives | **Shipped (v0.3.0)** |
+| **P2** | **Design-to-Code** | Semantic HTML/CSS, React (JSX + CSS), and Tailwind export with Flexbox mapping | **Shipped (v0.3.0)** |
+| **P2** | **Asset Library** | Reusable local library for images, SVGs, logos, and vector marks | **Shipped (v0.3.0)** |
+| **P2** | **Community Ecosystem** | Pure-JSON community templates, aesthetic directions, and workflows | **Shipped (v0.3.0)** |
+| **P2** | **Easy Installation** | `kanvas doctor`, `kanvas init-mcp`, `install.sh` / `install.ps1`, npm-ready packaging | **Shipped (v0.3.0)** *(npm publish pending release)* |
 
 ---
 
@@ -190,10 +258,11 @@ Full document & operation spec: [docs/FORMAT.md](docs/FORMAT.md).
 ## Privacy, security & disclosures
 
 - **Local-only server:** The local studio binds strictly to `127.0.0.1`, checks `Host` and `Origin`, and requires the `X-Kanvas: 1` header so third-party websites cannot call the local API.
-- **No accounts, no telemetry:** Designs stay on your machine. Nothing is uploaded to any cloud service.
-- **Network use:** Only Google Fonts stylesheets/font files are fetched when rendering designs (plus any external `https://` image URL you explicitly add to a design).
-- **Local subprocesses:** Headless Chrome or Microsoft Edge is launched on demand only for `kanvas_view`, `kanvas_export` (`png`/`jpg`/`pdf`), and `kanvas render`, with a **minimal environment** (Hermes API keys, `GH_TOKEN`, and other host secrets are never passed to child processes). In headless render mode, external image URLs are restricted to public `https://` hosts (private, loopback, and cloud-metadata addresses are refused).
-- **File access:** Studio HTTP APIs are confined strictly to the active workspace folder (`~/KanvasStudio` standalone, or Hermes's `plugin-files/data/kanvas-studio` inside Hermes Desktop). `kanvas_import_image` and `kanvas_export` read/write only paths explicitly requested via MCP.
+- **No accounts, no paywalls, no telemetry:** Designs, Brand Kits, Asset Library, and Community extensions stay on your machine. Nothing is uploaded to any cloud service.
+- **Pure-JSON extensions:** Community templates, aesthetic directions, and workflows are schema-validated JSON data only — zero arbitrary code execution.
+- **Network use:** Only Google Fonts stylesheets/font files are fetched when rendering designs (plus any external public `https://` image URL you explicitly add to a design).
+- **Local subprocesses:** Headless Chrome or Microsoft Edge is launched on demand only for `kanvas_view`, `kanvas_export` (`png`/`jpg`/`pdf`), and `kanvas render`, with a **minimal environment** (`envMinimal()`) so Hermes API keys, `GH_TOKEN`, and other host secrets are never passed to child processes. In headless render mode, external image URLs are restricted to public `https://` hosts (private, loopback, and cloud-metadata addresses are refused).
+- **File access:** Studio HTTP APIs, Brand Kits (`brands/`), Asset Library (`assets-library/`), and Community extensions (`community/`) are confined strictly to the active workspace folder (`~/KanvasStudio` standalone, or Hermes's `plugin-files/data/kanvas-studio` inside Hermes Desktop). `kanvas_import_image`, `kanvas_brand (import_asset)`, `kanvas_assets (import)`, `kanvas_export`, and `kanvas_to_code` (when `folder` is given) read/write only paths explicitly passed in tool calls.
 
 ---
 
@@ -203,27 +272,40 @@ Full document & operation spec: [docs/FORMAT.md](docs/FORMAT.md).
 |---|---|
 | `plugin.json`, `mcp.json` | Portable Agent Plugins v1 manifest + local stdio MCP server declaration for Hermes |
 | `desktop/plugin.js` | Canvas UI, renderer (Canvas 2D, SVG, PDF), auto-layout, components, pen tool, and comments — shared by Hermes Desktop **and** the local web app |
-| `app/` | Local browser host adapter (`host.js`, `main.js`), headless render entry (`render.html`), visual design linter (`lint.js`), and prebuilt `dist/` assets |
-| `server/` | Local studio HTTP server (`studio.js`), MCP stdio server (`mcp.js`), atomic edit ops (`ops.js`, `komponen.js`, `pena.js`), workspace manager (`ruang.js`), and headless renderer (`render.js`) |
-| `bin/kanvas.js` | CLI entry point (`kanvas`, `kanvas mcp`, `kanvas render`) |
-| `skills/kanvas-studio/` | Agent skill (`SKILL.md`, `kanvas_cek.py`, QA notes) |
+| `app/` | Local browser host adapter (`host.js`, `main.js`), headless render entry (`render.html`), Visual QA linter (`lint.js`), and prebuilt `dist/` assets |
+| `server/` | Local studio HTTP server (`studio.js`), MCP stdio server (`mcp.js`), Design Intelligence (`design-intelligence.js`), Brand Kit (`brand.js`), layout resolver (`layout.js`), Smart Resize (`resize.js`), Marketing Automation (`campaign.js`), Data Viz (`dataviz.js`), Presentation Engine (`presentation.js`), editable PPTX exporter (`pptx.js`), Design-to-Code (`codegen.js`), Asset Library (`assets.js`), Community Ecosystem (`community.js`), atomic edit ops (`ops.js`, `komponen.js`, `pena.js`), workspace manager (`ruang.js`), and headless renderer (`render.js`) |
+| `bin/kanvas.js` | Cross-platform CLI (`kanvas`, `kanvas mcp`, `kanvas render`, `kanvas doctor`, `kanvas init-mcp`) |
+| `install.ps1`, `install.sh` | Local Hermes Desktop dev installers for Windows and macOS/Linux |
+| `skills/kanvas-studio/` | Agent skill (`SKILL.md`, `kanvas_cek.py`, Design Intelligence & QA references) |
 | `templates/` | 6 built-in `.kanvas.json` starter templates (generated by `scripts/template.js`) |
-| `docs/FORMAT.md` | Full design document & edit operation reference |
-| `test/` | Automated test suite (`npm test`) |
+| `docs/` | Format spec ([FORMAT.md](docs/FORMAT.md)), product roadmap ([ROADMAP.md](docs/ROADMAP.md)), and community guide ([COMMUNITY.md](docs/COMMUNITY.md)) |
+| `test/` | Automated regression & integration test suite (`npm test`) |
 
 > The `.kanvas.json` file format keeps its original Indonesian schema keys (`teks`, `ukuran`, `warna`, `kotak`, `grup`, …) for backward compatibility; all keys are documented in [docs/FORMAT.md](docs/FORMAT.md) and served to agents via `kanvas_guide`.
 
 ---
 
-## Development
+## Development & Contributing
 
 ```bash
 npm install                    # dev dependencies only (esbuild, react, lucide-static)
 node scripts/template.js       # regenerate templates/*.kanvas.json
 npm run build                  # build app/dist/kanvas.js, ikon.json, template.json
-npm test                       # run full test suite (ops, components, studio security, MCP, 2,100+ icons)
+npm test                       # run full test suite (P0/P1/P2, studio security, MCP, 2,100+ icons)
 hermes plugins validate .      # run Hermes catalog admission checks
 ```
+
+Contributions of code, templates, aesthetic directions, workflows, QA checks, and documentation are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/COMMUNITY.md](docs/COMMUNITY.md), and [CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## Support Kanvas Studio
+
+Kanvas Studio is **100% free, open-source (MIT), and local-first** — there is **no paywall, no subscription, and no gated "Pro" version**, and there never will be. Every capability built into Kanvas Studio belongs to the community.
+
+If Kanvas Studio saves you hours of design work or powers your AI agent workflows, you can support ongoing development voluntarily via GitHub Sponsors:
+
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-Kanvas%20Studio-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/ranggaoscar)
 
 ## License
 

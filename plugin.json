@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kanvas-studio",
-  "version": "0.2.0",
-  "description": "A free, local design engine driven by AI agents over MCP. Decks, posters, logos, and social posts: watch the agent draw live on the canvas and edit anything yourself.",
+  "version": "0.3.0",
+  "description": "Free, open-source, local-first visual design engine for AI agents over MCP — Design Intelligence, multi-brand Brand Kits, Visual QA, Smart Resize, Campaigns, Data Viz, Presentation & editable PPTX export, Design-to-Code, Asset Library, and Community Ecosystem.",
   "author": {
     "name": "ROCK",
     "url": "https://github.com/ranggaoscar"
