@@ -1,0 +1,209 @@
+{
+ "versi": 1,
+ "judul": "Announcement story",
+ "artboards": [
+  {
+   "id": "a1",
+   "nama": "Story",
+   "x": 0,
+   "y": 0,
+   "w": 1080,
+   "h": 1920,
+   "bg": {
+    "warna": [
+     "#7B61FF",
+     "#EF476F"
+    ],
+    "sudut": 165
+   },
+   "elemen": [
+    {
+     "tipe": "elips",
+     "x": -200,
+     "y": -160,
+     "w": 800,
+     "h": 800,
+     "fill": "#FFFFFF",
+     "opacity": 0.1,
+     "id": "e9fpbb"
+    },
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 40,
+      "rata": "tengah"
+     },
+     "x": 90,
+     "y": 520,
+     "w": 900,
+     "id": "g4s6lu",
+     "tinggi": "peluk"
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#FFFFFF",
+     "opacity": 0.18,
+     "radius": 56,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": 44
+     },
+     "id": "g4kfde",
+     "induk": "g4s6lu",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "path",
+     "w": 120,
+     "id": "emzwkp",
+     "induk": "g4kfde",
+     "ikon": "rocket",
+     "nama": "Icon rocket",
+     "h": 120,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2zM9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05",
+     "fill": null,
+     "garis": {
+      "tebal": 8.8,
+      "warna": "#FFFFFF"
+     },
+     "ujung": "bulat",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#FFFFFF",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       12,
+       22,
+       12,
+       22
+      ],
+      "rata": "tengah"
+     },
+     "id": "go12tc",
+     "induk": "g4s6lu",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Just launched",
+     "font": "DM Sans",
+     "ukuran": 20,
+     "warna": "#5B3FE0",
+     "lh": 1.2,
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "lebar": "peluk",
+     "id": "epdotp",
+     "induk": "go12tc",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "The new\nfeature is\nhere.",
+     "font": "Space Grotesk",
+     "ukuran": 120,
+     "warna": "#FFFFFF",
+     "lh": 1,
+     "tebal": 700,
+     "spasi": -3,
+     "rata": "tengah",
+     "lebar": "isi",
+     "id": "ep6na7",
+     "induk": "g4s6lu",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Tap the link below to try it free for 14 days.",
+     "font": "DM Sans",
+     "ukuran": 38,
+     "warna": "#FFFFFF",
+     "lh": 1.4,
+     "rata": "tengah",
+     "lebar": "isi",
+     "id": "erqu1d",
+     "induk": "g4s6lu",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 8,
+      "rata": "tengah"
+     },
+     "x": 340,
+     "y": 1620,
+     "w": 400,
+     "id": "g5lkri",
+     "tinggi": "peluk"
+    },
+    {
+     "tipe": "path",
+     "w": 64,
+     "id": "ehsdlz",
+     "induk": "g5lkri",
+     "ikon": "chevrons-up",
+     "nama": "Icon chevrons-up",
+     "h": 64,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M17 11l-5-5-5 5M17 18l-5-5-5 5",
+     "fill": null,
+     "garis": {
+      "tebal": 5.3,
+      "warna": "#FFFFFF"
+     },
+     "ujung": "bulat",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Swipe up",
+     "font": "DM Sans",
+     "ukuran": 30,
+     "warna": "#FFFFFF",
+     "lh": 1.45,
+     "tebal": 700,
+     "rata": "tengah",
+     "lebar": "isi",
+     "id": "ej7ppn",
+     "induk": "g5lkri",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "id": "ig-story",
+  "nama": "Announcement story",
+  "kategori": "Social media",
+  "deskripsi": "Story 1080×1920 for an announcement or launch: big icon, headline, swipe-up prompt."
+ }
+}

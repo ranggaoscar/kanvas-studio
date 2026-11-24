@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "kanvas": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/bin/kanvas.js",
+        "mcp"
+      ],
+      "env": {
+        "KANVAS_NO_OPEN": "1",
+        "KANVAS_HERMES": "1"
+      }
+    }
+  }
+}

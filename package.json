@@ -1,0 +1,48 @@
+{
+  "name": "kanvas-studio",
+  "version": "0.2.0",
+  "description": "A free, local design engine any AI agent (Claude Code, Codex, Hermes) can drive over MCP. Decks, posters, logos, social posts: watch the agent draw live on the canvas.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "kanvas": "bin/kanvas.js"
+  },
+  "files": [
+    "bin",
+    "server",
+    "app/index.html",
+    "app/render.html",
+    "app/dist",
+    "docs",
+    "desktop",
+    "skills",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "start": "node bin/kanvas.js",
+    "mcp": "node bin/kanvas.js mcp",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
+  },
+  "keywords": [
+    "design",
+    "canvas",
+    "mcp",
+    "ai-agent",
+    "claude-code",
+    "codex",
+    "hermes",
+    "presentation",
+    "poster",
+    "logo"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "lucide-static": "^1.79.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

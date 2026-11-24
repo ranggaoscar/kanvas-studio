@@ -1,0 +1,117 @@
+{
+ "versi": 1,
+ "judul": "YouTube thumbnail",
+ "artboards": [
+  {
+   "id": "a1",
+   "nama": "Thumbnail",
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 720,
+   "bg": "#FFD166",
+   "elemen": [
+    {
+     "tipe": "kotak",
+     "x": 720,
+     "y": 0,
+     "w": 560,
+     "h": 720,
+     "fill": "#101634",
+     "id": "eo1uq4"
+    },
+    {
+     "tipe": "path",
+     "x": 820,
+     "y": 170,
+     "w": 380,
+     "id": "e2whvd",
+     "ikon": "trending-up",
+     "nama": "Icon trending-up",
+     "h": 380,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M16 7h6v6M22 7l-8.5 8.5-5-5L2 17",
+     "fill": null,
+     "garis": {
+      "tebal": 39.6,
+      "warna": "#FFD166"
+     },
+     "ujung": "bulat"
+    },
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 24
+     },
+     "x": 64,
+     "y": 110,
+     "w": 640,
+     "id": "gq9dfa",
+     "tinggi": "peluk"
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#101634",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       12,
+       22,
+       12,
+       22
+      ],
+      "rata": "tengah"
+     },
+     "id": "gdtv1p",
+     "induk": "gq9dfa",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Tutorial",
+     "font": "DM Sans",
+     "ukuran": 20,
+     "warna": "#FFD166",
+     "lh": 1.2,
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "lebar": "peluk",
+     "id": "ekh0os",
+     "induk": "gdtv1p",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "DESIGNER\nIN 5\nMINUTES",
+     "font": "Anton",
+     "ukuran": 132,
+     "warna": "#101634",
+     "lh": 0.95,
+     "spasi": 1,
+     "lebar": "isi",
+     "id": "eivkj1",
+     "induk": "gq9dfa",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "id": "yt-thumbnail",
+  "nama": "YouTube thumbnail",
+  "kategori": "Social media",
+  "deskripsi": "1280×720 with a 2–3 word ultra-bold title, a label and an icon accent."
+ }
+}

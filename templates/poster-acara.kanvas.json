@@ -1,0 +1,359 @@
+{
+ "versi": 1,
+ "judul": "Event poster A4",
+ "artboards": [
+  {
+   "id": "a1",
+   "nama": "Poster",
+   "x": 0,
+   "y": 0,
+   "w": 794,
+   "h": 1123,
+   "bg": "#0F1330",
+   "elemen": [
+    {
+     "tipe": "elips",
+     "x": 330,
+     "y": -260,
+     "w": 700,
+     "h": 700,
+     "fill": {
+      "warna": [
+       "#FF4D3D",
+       "#FFA23C"
+      ],
+      "sudut": 150
+     },
+     "id": "efszxm"
+    },
+    {
+     "tipe": "elips",
+     "x": -220,
+     "y": 760,
+     "w": 420,
+     "h": 420,
+     "fill": "#7B61FF",
+     "opacity": 0.35,
+     "id": "eviby2"
+    },
+    {
+     "tipe": "path",
+     "x": 520,
+     "y": 70,
+     "w": 210,
+     "id": "efmdf1",
+     "ikon": "wand-sparkles",
+     "nama": "Icon wand-sparkles",
+     "h": 210,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M21.64 3.64l-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4M19 14v4M10 2v2M7 8H3M21 16h-4M11 3H9",
+     "fill": null,
+     "garis": {
+      "tebal": 13.1,
+      "warna": "#FFFFFF"
+     },
+     "ujung": "bulat"
+    },
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 26
+     },
+     "x": 60,
+     "y": 430,
+     "w": 674,
+     "id": "g69roq",
+     "tinggi": "peluk"
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#FFFFFF",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       12,
+       22,
+       12,
+       22
+      ],
+      "rata": "tengah"
+     },
+     "id": "g3t3ag",
+     "induk": "g69roq",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Free workshop",
+     "font": "DM Sans",
+     "ukuran": 20,
+     "warna": "#101634",
+     "lh": 1.2,
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "lebar": "peluk",
+     "id": "epp253",
+     "induk": "g3t3ag",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Design faster\nwith AI.",
+     "font": "Space Grotesk",
+     "ukuran": 76,
+     "warna": "#FFFFFF",
+     "lh": 1,
+     "tebal": 700,
+     "spasi": -2,
+     "lebar": "isi",
+     "id": "ecjab1",
+     "induk": "g69roq",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Two hands-on hours: from a brief to a finished poster, with a design agent.",
+     "font": "DM Sans",
+     "ukuran": 18,
+     "warna": "#C9CCE8",
+     "lh": 1.5,
+     "lebar": "isi",
+     "id": "efqx8l",
+     "induk": "g69roq",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 14
+     },
+     "id": "gjtn53",
+     "induk": "g69roq",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "tata": {
+      "arah": "baris",
+      "jarak": 12,
+      "rata": "tengah"
+     },
+     "id": "gl1kqv",
+     "induk": "gjtn53",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "path",
+     "w": 24,
+     "id": "ehg0kg",
+     "induk": "gl1kqv",
+     "ikon": "calendar",
+     "nama": "Icon calendar",
+     "h": 24,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M8 2v3M16 2v3M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2ZM3 9h18",
+     "fill": null,
+     "garis": {
+      "tebal": 2,
+      "warna": "#FF8A6B"
+     },
+     "ujung": "bulat",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Saturday, March 14, 2026",
+     "font": "DM Sans",
+     "ukuran": 17,
+     "warna": "#FFFFFF",
+     "lh": 1.3,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "ehzxpm",
+     "induk": "gl1kqv",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "tata": {
+      "arah": "baris",
+      "jarak": 12,
+      "rata": "tengah"
+     },
+     "id": "gq02sm",
+     "induk": "gjtn53",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "path",
+     "w": 24,
+     "id": "ezp6y8",
+     "induk": "gq02sm",
+     "ikon": "clock",
+     "nama": "Icon clock",
+     "h": 24,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0ZM12 6v6l4 2",
+     "fill": null,
+     "garis": {
+      "tebal": 2,
+      "warna": "#FF8A6B"
+     },
+     "ujung": "bulat",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "9:00 – 11:00 AM",
+     "font": "DM Sans",
+     "ukuran": 17,
+     "warna": "#FFFFFF",
+     "lh": 1.3,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "elf187",
+     "induk": "gq02sm",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "tata": {
+      "arah": "baris",
+      "jarak": 12,
+      "rata": "tengah"
+     },
+     "id": "g5sisg",
+     "induk": "gjtn53",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "path",
+     "w": 24,
+     "id": "e1gzms",
+     "induk": "g5sisg",
+     "ikon": "map-pin",
+     "nama": "Icon map-pin",
+     "h": 24,
+     "vb": [
+      24,
+      24
+     ],
+     "d": "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0M9 10a3 3 0 1 0 6 0a3 3 0 1 0 -6 0Z",
+     "fill": null,
+     "garis": {
+      "tebal": 2,
+      "warna": "#FF8A6B"
+     },
+     "ujung": "bulat",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Creative Hall, Jakarta",
+     "font": "DM Sans",
+     "ukuran": 17,
+     "warna": "#FFFFFF",
+     "lh": 1.3,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "e7ohvk",
+     "induk": "g5sisg",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "nama": "Button",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#E5392A",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       16,
+       28,
+       16,
+       28
+      ],
+      "rata": "tengah"
+     },
+     "id": "gx3u9p",
+     "induk": "g69roq",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Sign up now",
+     "font": "DM Sans",
+     "ukuran": 20,
+     "warna": "#FFFFFF",
+     "lh": 1.2,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "ewz8fn",
+     "induk": "gx3u9p",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "40 seats only  ·  events.example/design-ai",
+     "font": "DM Sans",
+     "ukuran": 13,
+     "warna": "#8A90B8",
+     "lh": 1.45,
+     "x": 60,
+     "y": 1050,
+     "w": 674,
+     "id": "ewon1w"
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "id": "poster-acara",
+  "nama": "Event poster A4",
+  "kategori": "Poster",
+  "deskripsi": "A4 poster for a talk, workshop or meetup: big headline, date, time and venue with icons, sign-up button."
+ }
+}

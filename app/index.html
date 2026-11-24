@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kanvas Studio</title>
+<link rel="icon" href="/dist/logo.svg" type="image/svg+xml">
+<style>
+  /* warna dasar yang biasanya diberi Hermes; tema terang/gelap Kanvas menimpanya di dalam .kv */
+  :root {
+    --ui-bg-primary: #12141d; --ui-bg-elevated: #1b1e2a; --ui-bg-editor: #161925;
+    --ui-text-primary: #eef0f7; --ui-text-secondary: #aeb4cc; --ui-text-tertiary: #7d849e;
+    --ui-stroke-secondary: #2b2f40; --ui-stroke-tertiary: #232736;
+    color-scheme: light dark;
+  }
+  html, body { margin: 0; height: 100%; background: var(--ui-bg-primary); color: var(--ui-text-primary); font: 13px "Plus Jakarta Sans", system-ui, sans-serif }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column }
+  #app > * { flex: 1; min-height: 0 }
+  .kv-btn { height: 32px; padding: 0 14px; border-radius: 9px; border: 0; font: inherit; font-weight: 700; cursor: pointer; background: linear-gradient(135deg, #ff4d3d, #ff9a3c); color: #fff }
+  .kv-btn-secondary { background: transparent; color: inherit; border: 1px solid var(--ui-stroke-secondary) }
+  #kv-toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 99; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none }
+  .kv-toast { background: #101634; color: #f3f0e9; padding: 9px 14px; border-radius: 10px; font: 600 12.5px "Plus Jakarta Sans", system-ui; box-shadow: 0 10px 30px rgba(0,0,0,.3); transition: opacity .4s, transform .4s }
+  .kv-toast.pergi { opacity: 0; transform: translateY(6px) }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="/dist/kanvas.js"></script>
+</body>
+</html>

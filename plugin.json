@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kanvas-studio",
+  "version": "0.2.0",
+  "description": "A free, local design engine driven by AI agents over MCP. Decks, posters, logos, and social posts: watch the agent draw live on the canvas and edit anything yourself.",
+  "author": {
+    "name": "ROCK",
+    "url": "https://github.com/ranggaoscar"
+  },
+  "homepage": "https://github.com/ranggaoscar/kanvas-studio",
+  "repository": "https://github.com/ranggaoscar/kanvas-studio",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "canvas",
+    "mcp",
+    "presentation",
+    "poster",
+    "logo",
+    "desktop"
+  ],
+  "extensions": {
+    "com.nousresearch.hermes": {
+      "servers": {
+        "kanvas": {
+          "timeout": 180
+        }
+      }
+    }
+  }
+}

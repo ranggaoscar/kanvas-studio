@@ -1,0 +1,500 @@
+{
+ "versi": 1,
+ "judul": "Pricing slide, 3 plans",
+ "artboards": [
+  {
+   "id": "a1",
+   "nama": "Pricing",
+   "x": 0,
+   "y": 0,
+   "w": 1920,
+   "h": 1080,
+   "bg": "#F7F4EE",
+   "elemen": [
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 16,
+      "rata": "tengah"
+     },
+     "x": 140,
+     "y": 110,
+     "w": 1640,
+     "id": "gyk2uh",
+     "tinggi": "peluk"
+    },
+    {
+     "tipe": "teks",
+     "teks": "Pricing",
+     "font": "DM Sans",
+     "ukuran": 22,
+     "warna": "#C2341F",
+     "lh": 1.2,
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "rata": "tengah",
+     "lebar": "isi",
+     "id": "e52xmv",
+     "induk": "gyk2uh",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Pick the right plan",
+     "font": "Space Grotesk",
+     "ukuran": 72,
+     "warna": "#101634",
+     "lh": 1.05,
+     "tebal": 700,
+     "spasi": -2,
+     "rata": "tengah",
+     "lebar": "isi",
+     "id": "e79d2t",
+     "induk": "gyk2uh",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "id": "deret-paket",
+     "x": 140,
+     "y": 360,
+     "w": 1640,
+     "tata": {
+      "arah": "baris",
+      "jarak": 40,
+      "rata": "regang"
+     },
+     "tinggi": "peluk"
+    },
+    {
+     "tipe": "grup",
+     "tata": {
+      "arah": "kolom",
+      "jarak": 22,
+      "padding": 48
+     },
+     "id": "paket",
+     "nama": "Plan",
+     "lebar": "isi",
+     "fill": "#FFFFFF",
+     "radius": 32,
+     "bayangan": true,
+     "induk": "deret-paket",
+     "tinggi": "peluk",
+     "x": 0,
+     "y": 0,
+     "komponen": true
+    },
+    {
+     "tipe": "teks",
+     "teks": "Free",
+     "font": "DM Sans",
+     "ukuran": 24,
+     "warna": "#C2341F",
+     "lh": 1.2,
+     "nama": "Name",
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "lebar": "isi",
+     "id": "ewpzv3",
+     "induk": "paket",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "$0",
+     "font": "Space Grotesk",
+     "ukuran": 72,
+     "warna": "#101634",
+     "lh": 1.1,
+     "nama": "Price",
+     "tebal": 700,
+     "spasi": -2,
+     "lebar": "isi",
+     "id": "e8okko",
+     "induk": "paket",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "To try it out",
+     "font": "DM Sans",
+     "ukuran": 26,
+     "warna": "#4B5274",
+     "lh": 1.45,
+     "nama": "For",
+     "lebar": "isi",
+     "id": "e8bwhr",
+     "induk": "paket",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "kotak",
+     "h": 2,
+     "fill": "#E6E1D6",
+     "id": "exenrj",
+     "induk": "paket",
+     "w": 100,
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "✓  3 designs\n✓  PNG export\n✓  Community",
+     "font": "DM Sans",
+     "ukuran": 26,
+     "warna": "#101634",
+     "lh": 1.7,
+     "nama": "Features",
+     "lebar": "isi",
+     "id": "ee9umu",
+     "induk": "paket",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "nama": "Button",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#101634",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       20,
+       32,
+       20,
+       32
+      ],
+      "rata": "tengah"
+     },
+     "id": "glcmyk",
+     "induk": "paket",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Choose plan",
+     "font": "DM Sans",
+     "ukuran": 24,
+     "warna": "#FFFFFF",
+     "lh": 1.2,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "e7kdah",
+     "induk": "glcmyk",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "induk": "deret-paket",
+     "id": "eaeh5k",
+     "salinan": "paket",
+     "timpa": {
+      "@": {
+       "fill": "#101634"
+      },
+      "ewpzv3": {
+       "teks": "Pro",
+       "warna": "#FF8A6B"
+      },
+      "e8okko": {
+       "teks": "$9",
+       "warna": "#FFFFFF"
+      },
+      "e8bwhr": {
+       "teks": "For creators",
+       "warna": "#C9CCE8"
+      },
+      "ee9umu": {
+       "teks": "✓  Unlimited designs\n✓  PDF & SVG export\n✓  AI agent",
+       "warna": "#FFFFFF"
+      },
+      "glcmyk": {
+       "fill": "#FFFFFF"
+      },
+      "e7kdah": {
+       "warna": "#101634"
+      }
+     },
+     "tata": {
+      "arah": "kolom",
+      "jarak": 22,
+      "padding": 48
+     },
+     "fill": "#101634",
+     "radius": 32,
+     "bayangan": true,
+     "lebar": "isi",
+     "tinggi": "peluk",
+     "nama": "Plan"
+    },
+    {
+     "tipe": "teks",
+     "teks": "Pro",
+     "font": "DM Sans",
+     "ukuran": 24,
+     "warna": "#FF8A6B",
+     "lh": 1.2,
+     "nama": "Name",
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "lebar": "isi",
+     "id": "eaeh5k.ewpzv3",
+     "induk": "eaeh5k",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "$9",
+     "font": "Space Grotesk",
+     "ukuran": 72,
+     "warna": "#FFFFFF",
+     "lh": 1.1,
+     "nama": "Price",
+     "tebal": 700,
+     "spasi": -2,
+     "lebar": "isi",
+     "id": "eaeh5k.e8okko",
+     "induk": "eaeh5k",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "For creators",
+     "font": "DM Sans",
+     "ukuran": 26,
+     "warna": "#C9CCE8",
+     "lh": 1.45,
+     "nama": "For",
+     "lebar": "isi",
+     "id": "eaeh5k.e8bwhr",
+     "induk": "eaeh5k",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "kotak",
+     "h": 2,
+     "fill": "#E6E1D6",
+     "id": "eaeh5k.exenrj",
+     "induk": "eaeh5k",
+     "w": 100,
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "✓  Unlimited designs\n✓  PDF & SVG export\n✓  AI agent",
+     "font": "DM Sans",
+     "ukuran": 26,
+     "warna": "#FFFFFF",
+     "lh": 1.7,
+     "nama": "Features",
+     "lebar": "isi",
+     "id": "eaeh5k.ee9umu",
+     "induk": "eaeh5k",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "nama": "Button",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#FFFFFF",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       20,
+       32,
+       20,
+       32
+      ],
+      "rata": "tengah"
+     },
+     "id": "eaeh5k.glcmyk",
+     "induk": "eaeh5k",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Choose plan",
+     "font": "DM Sans",
+     "ukuran": 24,
+     "warna": "#101634",
+     "lh": 1.2,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "eaeh5k.e7kdah",
+     "induk": "eaeh5k.glcmyk",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "induk": "deret-paket",
+     "id": "etfsv2",
+     "salinan": "paket",
+     "timpa": {
+      "ewpzv3": {
+       "teks": "Team"
+      },
+      "e8okko": {
+       "teks": "$29"
+      },
+      "e8bwhr": {
+       "teks": "For 5 people"
+      },
+      "ee9umu": {
+       "teks": "✓  Everything in Pro\n✓  Shared brand kit\n✓  Comments"
+      }
+     },
+     "tata": {
+      "arah": "kolom",
+      "jarak": 22,
+      "padding": 48
+     },
+     "fill": "#FFFFFF",
+     "radius": 32,
+     "bayangan": true,
+     "lebar": "isi",
+     "tinggi": "peluk",
+     "nama": "Plan"
+    },
+    {
+     "tipe": "teks",
+     "teks": "Team",
+     "font": "DM Sans",
+     "ukuran": 24,
+     "warna": "#C2341F",
+     "lh": 1.2,
+     "nama": "Name",
+     "tebal": 700,
+     "kapital": true,
+     "spasi": 3,
+     "lebar": "isi",
+     "id": "etfsv2.ewpzv3",
+     "induk": "etfsv2",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "$29",
+     "font": "Space Grotesk",
+     "ukuran": 72,
+     "warna": "#101634",
+     "lh": 1.1,
+     "nama": "Price",
+     "tebal": 700,
+     "spasi": -2,
+     "lebar": "isi",
+     "id": "etfsv2.e8okko",
+     "induk": "etfsv2",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "For 5 people",
+     "font": "DM Sans",
+     "ukuran": 26,
+     "warna": "#4B5274",
+     "lh": 1.45,
+     "nama": "For",
+     "lebar": "isi",
+     "id": "etfsv2.e8bwhr",
+     "induk": "etfsv2",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "kotak",
+     "h": 2,
+     "fill": "#E6E1D6",
+     "id": "etfsv2.exenrj",
+     "induk": "etfsv2",
+     "w": 100,
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "✓  Everything in Pro\n✓  Shared brand kit\n✓  Comments",
+     "font": "DM Sans",
+     "ukuran": 26,
+     "warna": "#101634",
+     "lh": 1.7,
+     "nama": "Features",
+     "lebar": "isi",
+     "id": "etfsv2.ee9umu",
+     "induk": "etfsv2",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "grup",
+     "nama": "Button",
+     "lebar": "peluk",
+     "tinggi": "peluk",
+     "fill": "#101634",
+     "radius": 999,
+     "tata": {
+      "arah": "baris",
+      "jarak": 24,
+      "padding": [
+       20,
+       32,
+       20,
+       32
+      ],
+      "rata": "tengah"
+     },
+     "id": "etfsv2.glcmyk",
+     "induk": "etfsv2",
+     "x": 0,
+     "y": 0
+    },
+    {
+     "tipe": "teks",
+     "teks": "Choose plan",
+     "font": "DM Sans",
+     "ukuran": 24,
+     "warna": "#FFFFFF",
+     "lh": 1.2,
+     "tebal": 700,
+     "lebar": "peluk",
+     "id": "etfsv2.e7kdah",
+     "induk": "etfsv2.glcmyk",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "id": "harga",
+  "nama": "Pricing slide, 3 plans",
+  "kategori": "Presentation",
+  "deskripsi": "16:9 with a \"Plan\" card component: edit the main card and all three follow."
+ }
+}

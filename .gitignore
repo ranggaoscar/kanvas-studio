@@ -1,0 +1,13 @@
+# hasil kerja & file sementara
+preview/
+_uji/
+.playwright-mcp/
+__pycache__/
+*.pyc
+# file desain pribadi (simpan di folder desain, bukan di repo)
+*.kanvas.json
+_aktif.json
+gambar/
+
+node_modules/
+!templates/*.kanvas.json
