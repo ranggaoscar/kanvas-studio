@@ -1,20 +1,9 @@
-<p align="center">
-  <img src="assets/banner.png" alt="Kanvas Studio — Design anything. Your agent draws it." width="100%">
-</p>
+![Kanvas Studio — Design anything. Your agent draws it.](assets/banner.png)
 
-<p align="center">
-  <b>A free, local design engine driven by AI agents over MCP.</b><br>
-  Pitch decks, posters, logos, and social graphics — watch your agent draw step by step, and jump in to edit anything yourself.
-</p>
+**A free, local design engine driven by AI agents over MCP.**
+Pitch decks, posters, logos, and social graphics — watch your agent draw step by step, and jump in to edit anything yourself.
 
-<p align="center">
-  <a href="#use-inside-hermes-desktop">Hermes Desktop</a> ·
-  <a href="#use-locally-without-hermes-mcp">Claude Code</a> ·
-  <a href="#use-locally-without-hermes-mcp">Codex</a> ·
-  <a href="#use-locally-without-hermes-mcp">Cursor</a> ·
-  <a href="https://modelcontextprotocol.io">Any MCP Agent</a> ·
-  <a href="LICENSE">MIT License</a>
-</p>
+[Hermes Desktop](#use-inside-hermes-desktop) · [Claude Code](#use-locally-without-hermes-mcp) · [Codex](#use-locally-without-hermes-mcp) · [Cursor](#use-locally-without-hermes-mcp) · [Any MCP Agent](https://modelcontextprotocol.io) · [MIT License](LICENSE)
 
 ---
 
@@ -23,30 +12,22 @@
 ### Home screen & ready-made templates
 Write a brief for your agent, resume recent work, or start from one of 6 built-in templates (startup pitch deck, A4 event poster, Instagram 4:5 promo, 9:16 story, YouTube thumbnail, pricing slide).
 
-<p align="center">
-  <img src="assets/screenshot-home.png" alt="Kanvas Studio home screen with agent brief box and template gallery" width="100%">
-</p>
+![Kanvas Studio home screen with agent brief box and template gallery](assets/screenshot-home.png)
 
 ### Live multi-artboard canvas, layers & Figma-style components
 Every agent edit appears live with a moving cursor, work frame, and artboard scan. Reusable **components** keep repeated cards, stats, and buttons in sync while allowing per-copy overrides.
 
-<p align="center">
-  <img src="assets/screenshot-canvas.png" alt="Kanvas Studio multi-slide pitch deck canvas with layers and reusable components" width="100%">
-</p>
+![Kanvas Studio multi-slide pitch deck canvas with layers and reusable components](assets/screenshot-canvas.png)
 
 ### Full visual editor with auto-layout, Google Fonts & 2,100+ icons
 Jump into the canvas whenever you like — edit typography (any Google Font), solid/gradient fills, Figma-style auto-layout frames, vector paths (Pen tool), and Lucide icons directly.
 
-<p align="center">
-  <img src="assets/screenshot-editor.png" alt="Kanvas Studio visual editor showing auto-layout group selection and inspector panel" width="100%">
-</p>
+![Kanvas Studio visual editor showing auto-layout group selection and inspector panel](assets/screenshot-editor.png)
 
 ### Pin comments & send feedback back to your agent
 Press **C**, click any spot on an artboard, leave a note, and click **Send to agent**. Your agent reads exact element IDs and coordinates via `kanvas_comments`, applies the edits, and resolves each pin with a reply.
 
-<p align="center">
-  <img src="assets/screenshot-comments.png" alt="Kanvas Studio comment pins, resolved agent reply, and Comments toolbar drawer" width="100%">
-</p>
+![Kanvas Studio comment pins, resolved agent reply, and Comments toolbar drawer](assets/screenshot-comments.png)
 
 ---
 
@@ -91,8 +72,7 @@ Then enable **Kanvas Studio** under **Capabilities → Plugins** and restart Her
 - Closing the tab never disables the plugin — and as soon as your agent calls a Kanvas tool, the canvas tab opens automatically.
 - Designs live in Hermes's plugin data folder (`plugin-files/data/kanvas-studio`), shared automatically between the Desktop tab and the MCP server.
 
-<details>
-<summary>Local development install on Windows (without Hermes plugin installer)</summary>
+#### Local development install on Windows (without Hermes plugin installer)
 
 ```powershell
 git clone https://github.com/ranggaoscar/kanvas-studio
@@ -101,8 +81,6 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 Then reload plugins in Hermes Desktop (`Ctrl+K` → **Reload desktop plugins**).
-
-</details>
 
 ---
 
