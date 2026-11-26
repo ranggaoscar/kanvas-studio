@@ -140,42 +140,27 @@ Then reload plugins in Hermes Desktop (`Ctrl+K` / `Cmd+K` → **Reload desktop p
 
 Use Kanvas Studio standalone with **Claude Code**, **Codex**, **Cursor**, or any MCP client. The MCP server starts the local studio automatically and opens it in your browser so you can watch live.
 
-### 1. Clone once & verify environment
+No clone required — the published package runs straight from the npm registry:
 
 ```bash
-git clone https://github.com/ranggaoscar/kanvas-studio
-cd kanvas-studio
-
-# Verify Node.js, Chrome/Edge, and workspace health:
-node bin/kanvas.js doctor
-
-# Print ready-to-paste MCP config for Claude Code, Codex, Cursor, or Hermes:
-node bin/kanvas.js init-mcp
-
-# Open the studio manually in your browser (http://127.0.0.1:4848):
-node bin/kanvas.js
-
-# Render & run Visual QA (or export editable PowerPoint) from the terminal:
-node bin/kanvas.js render design.kanvas.json
-node bin/kanvas.js render design.kanvas.json --format pptx
+npx -y kanvas-studio mcp     # start the MCP server (your agent will spawn this)
+npx -y kanvas-studio doctor  # verify Node.js, Chrome/Edge, and workspace health
 ```
 
-> **Note for `npx` users:** If you run `npx -y github:ranggaoscar/kanvas-studio mcp`, npm 12+ (Node 24+) blocks Git URLs by default (`EALLOWGIT`) unless you pass `--allow-git=root` or use a local clone path (`node /path/to/kanvas-studio/bin/kanvas.js mcp`).
-
-### 2. Connect your AI agent
+### 1. Connect your AI agent
 
 **Claude Code**
 
 ```bash
-claude mcp add kanvas -- node /absolute/path/to/kanvas-studio/bin/kanvas.js mcp
+claude mcp add kanvas -- npx -y kanvas-studio mcp
 ```
 
 **Codex** (`~/.codex/config.toml`)
 
 ```toml
 [mcp_servers.kanvas]
-command = "node"
-args = ["/absolute/path/to/kanvas-studio/bin/kanvas.js", "mcp"]
+command = "npx"
+args = ["-y", "kanvas-studio", "mcp"]
 ```
 
 **Cursor / Windsurf / any stdio MCP client**
@@ -184,12 +169,32 @@ args = ["/absolute/path/to/kanvas-studio/bin/kanvas.js", "mcp"]
 {
   "mcpServers": {
     "kanvas": {
-      "command": "node",
-      "args": ["/absolute/path/to/kanvas-studio/bin/kanvas.js", "mcp"]
+      "command": "npx",
+      "args": ["-y", "kanvas-studio", "mcp"]
     }
   }
 }
 ```
+
+`npx -y kanvas-studio init-mcp` prints these snippets, plus a Hermes config, for every supported client.
+
+### 2. Work from a clone (optional)
+
+Clone only if you want to modify the engine, run the test suite, or render from the terminal:
+
+```bash
+git clone https://github.com/ranggaoscar/kanvas-studio
+cd kanvas-studio
+npm install          # dev dependencies only; there are no runtime dependencies
+
+node bin/kanvas.js doctor
+node bin/kanvas.js init-mcp
+node bin/kanvas.js                                   # open the studio (http://127.0.0.1:4848)
+node bin/kanvas.js render design.kanvas.json          # render + Visual QA
+node bin/kanvas.js render design.kanvas.json --format pptx
+```
+
+> **Note:** `npx -y github:ranggaoscar/kanvas-studio mcp` (a Git URL) is blocked by npm 12+ / Node 24+ (`EALLOWGIT`) unless you pass `--allow-git=root`. Use the published `kanvas-studio` package or `node /path/to/kanvas-studio/bin/kanvas.js mcp` instead.
 
 Then ask your agent:
 
@@ -247,7 +252,7 @@ The v0.3.0 foundation remains available. **v0.4.0** adds faster QA and partial d
 | **P2** | **Design-to-Code** | Semantic HTML/CSS, React (JSX + CSS), and Tailwind export with Flexbox mapping | **Shipped (v0.3.0)** |
 | **P2** | **Asset Library** | Reusable local library for images, SVGs, logos, and vector marks | **Shipped (v0.3.0)** |
 | **P2** | **Community Ecosystem** | Pure-JSON community templates, aesthetic directions, and workflows | **Shipped (v0.3.0)** |
-| **P2** | **Easy Installation** | `kanvas doctor`, `kanvas init-mcp`, `install.sh` / `install.ps1`, npm-ready packaging | **Shipped (v0.3.0)** *(npm publish pending release)* |
+| **P2** | **Easy Installation** | `npx -y kanvas-studio mcp` quickstart, `kanvas doctor`, `kanvas init-mcp`, `install.sh` / `install.ps1`, npm package | **Shipped (v0.4.1)** |
 
 ---
 

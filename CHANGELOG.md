@@ -3,6 +3,10 @@
 All notable changes to **Kanvas Studio** are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.1]
+
+- **npm package polish:** excludes `__pycache__`/`*.pyc` from the published tarball and documents the `npx -y kanvas-studio mcp` quickstart for Claude Code, Codex, Cursor, and Hermes.
+
 ## [0.4.0]
 
 - **Faster agent workflow:** smaller MCP schemas, `kanvas_guide` quick topics, partial `kanvas_read`, `fast_qa` and `qa_only`, and opt-in deterministic `auto_heal`.

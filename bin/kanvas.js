@@ -34,6 +34,7 @@ Usage:
 function printInitMcp(client = 'all') {
   const target = String(client || 'all').toLowerCase()
   const p = BIN_PATH.replace(/\\/g, '/')
+  console.log(`# Published package shortcut (no absolute path):\n# npx -y ${PKG.name}@${PKG.version} mcp\n`)
   if (target === 'claude' || target === 'all') {
     console.log('# Claude Code')
     console.log(`claude mcp add kanvas -- node "${p}" mcp\n`)
