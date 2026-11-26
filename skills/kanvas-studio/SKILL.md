@@ -4,7 +4,7 @@ description: Design presentations, pitch decks, posters (A4/A2/custom), logos, b
 license: MIT
 metadata:
   author: kanvas-studio
-  version: "0.4.1"
+  version: "0.4.2"
   tags: "design, art-direction, brand-kit, presentation, pptx, dataviz, poster, canvas, mcp"
 ---
 

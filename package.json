@@ -1,6 +1,6 @@
 {
   "name": "kanvas-studio",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Free, open-source, local-first visual design engine for AI agents over MCP — Design Intelligence, Brand Kits, Visual QA, Smart Resize, Marketing Campaigns, Data Viz, Presentation/PPTX export, Design-to-Code, Asset Library, and Community Ecosystem.",
   "type": "module",
   "license": "MIT",
@@ -17,7 +17,8 @@
     "url": "https://github.com/sponsors/ranggaoscar"
   },
   "bin": {
-    "kanvas": "bin/kanvas.js"
+    "kanvas": "bin/kanvas.js",
+    "kanvas-studio": "bin/kanvas.js"
   },
   "files": [
     "bin",
