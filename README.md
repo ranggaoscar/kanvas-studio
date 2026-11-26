@@ -2,6 +2,7 @@
 
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-Kanvas%20Studio-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/ranggaoscar)
 [![License: MIT](https://img.shields.io/badge/License-MIT-101634.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/kanvas-studio)](https://www.npmjs.com/package/kanvas-studio)
 
 # Kanvas Studio
 
@@ -13,7 +14,45 @@ Kanvas Studio is an **agent-native visual design engine** — not just another t
 
 **100% free, MIT open-source, and local-first — zero paywalls, zero subscriptions, zero premium tiers, zero cloud lock-in.** Funded strictly through voluntary community sponsorship and donations.
 
-[Hermes Desktop](#use-inside-hermes-desktop) · [Standalone MCP](#use-locally-without-hermes-mcp) · [Design Intelligence](#design-intelligence) · [MCP Tools (23)](#agent-mcp-tools) · [Roadmap](#roadmap) · [Support Kanvas Studio](#support-kanvas-studio)
+[Quick Start](#quick-start) · [Hermes Desktop](#use-inside-hermes-desktop) · [Standalone MCP](#use-locally-without-hermes-mcp) · [Design Intelligence](#design-intelligence) · [MCP Tools (23)](#agent-mcp-tools) · [Roadmap](#roadmap) · [Support Kanvas Studio](#support-kanvas-studio)
+
+---
+
+## Quick Start
+
+### Standalone — Claude Code, Cursor, Codex, Windsurf (any MCP client)
+
+```bash
+# Claude Code
+claude mcp add kanvas -- npx -y kanvas-studio mcp
+
+# Check Node.js, Chrome/Edge, and workspace health first
+npx -y kanvas-studio doctor
+```
+
+**Cursor / Windsurf / any stdio MCP client** (`mcp.json`):
+
+```json
+{ "mcpServers": { "kanvas": { "command": "npx", "args": ["-y", "kanvas-studio", "mcp"] } } }
+```
+
+**Codex** (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.kanvas]
+command = "npx"
+args = ["-y", "kanvas-studio", "mcp"]
+```
+
+No clone, no install step — the studio starts locally at `http://127.0.0.1:4848` on first tool call. `npx -y kanvas-studio init-mcp` prints every snippet above.
+
+### Hermes Desktop
+
+```bash
+hermes plugins install https://github.com/ranggaoscar/kanvas-studio
+```
+
+Then enable **Kanvas Studio** under **Capabilities → Plugins** and restart Hermes. The canvas opens from the sidebar, the status-bar **Kanvas** button, or **Ctrl+Shift+K**.
 
 ---
 
@@ -91,26 +130,17 @@ Most agent design tools produce repetitive, cookie-cutter slides because their s
 
 - **Node.js 18+**
 - **Google Chrome or Microsoft Edge** (used locally in headless mode for PNG/JPG/PDF rendering and Visual QA via `kanvas_view`, `kanvas_export`, and `kanvas render`; `.pptx` and code export require no browser)
-
----
-
 - **External PDF Quick Edit only:** Windows.Data.Pdf on Windows, or local Poppler (`pdfinfo` + `pdftoppm` on Linux/macOS/Windows). `pdftotext` is optional for extracting a text layer. Hybrid PDF import needs neither renderer.
 
 ## Use inside Hermes Desktop
 
 Kanvas Studio ships as a **Portable Agent Plugin (`plugin.json` + `mcp.json` + `skills/` + `desktop/plugin.js`)**, so Hermes automatically wires up the **Desktop canvas tab**, all **23 `kanvas_*` MCP tools**, and the **`kanvas-studio` skill** on Windows, macOS, and Linux — with zero Python dependencies and zero npm runtime dependencies.
 
-### Install from Hermes CLI or Desktop
+Install from the [Quick Start](#quick-start) above, or from the Hermes plugin catalog once listed:
 
 ```bash
-# From the Hermes plugin catalog (once listed):
 hermes plugins install kanvas-studio
-
-# Or install directly from GitHub:
-hermes plugins install https://github.com/ranggaoscar/kanvas-studio
 ```
-
-Then enable **Kanvas Studio** under **Capabilities → Plugins** and restart Hermes so the bundled `kanvas` MCP server starts.
 
 - Open the canvas from **Kanvas Studio** in the sidebar, the **Kanvas** button in the status bar, the command palette, or **Ctrl+Shift+K**.
 - Closing the tab never disables the plugin — and as soon as your agent calls a Kanvas tool, the canvas tab opens automatically.
@@ -138,47 +168,9 @@ Then reload plugins in Hermes Desktop (`Ctrl+K` / `Cmd+K` → **Reload desktop p
 
 ## Use locally without Hermes (MCP)
 
-Use Kanvas Studio standalone with **Claude Code**, **Codex**, **Cursor**, or any MCP client. The MCP server starts the local studio automatically and opens it in your browser so you can watch live.
+The [Quick Start](#quick-start) covers the `npx` path for Claude Code, Codex, Cursor, and Windsurf. Use this section only when you want a local checkout or need the full CLI.
 
-No clone required — the published package runs straight from the npm registry:
-
-```bash
-npx -y kanvas-studio mcp     # start the MCP server (your agent will spawn this)
-npx -y kanvas-studio doctor  # verify Node.js, Chrome/Edge, and workspace health
-```
-
-### 1. Connect your AI agent
-
-**Claude Code**
-
-```bash
-claude mcp add kanvas -- npx -y kanvas-studio mcp
-```
-
-**Codex** (`~/.codex/config.toml`)
-
-```toml
-[mcp_servers.kanvas]
-command = "npx"
-args = ["-y", "kanvas-studio", "mcp"]
-```
-
-**Cursor / Windsurf / any stdio MCP client**
-
-```json
-{
-  "mcpServers": {
-    "kanvas": {
-      "command": "npx",
-      "args": ["-y", "kanvas-studio", "mcp"]
-    }
-  }
-}
-```
-
-`npx -y kanvas-studio init-mcp` prints these snippets, plus a Hermes config, for every supported client.
-
-### 2. Work from a clone (optional)
+### Work from a clone (optional)
 
 Clone only if you want to modify the engine, run the test suite, or render from the terminal:
 
