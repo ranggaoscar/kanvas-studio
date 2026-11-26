@@ -32,7 +32,7 @@ function resetStore() {
     zoom: 0.4, pan: { x: 60, y: 60 }, tool: 'pilih', undo: [], redo: [], lastSnap: 0,
     dirty: false, saving: false, lastMtime: 0, status: '', fase: 'muat', pesan: '',
     img: {}, menu: null, modal: null, present: null, guides: [], ikuti: true, skala: 2, panelKiri: false, panelKanan: true,
-    tema: 'terang', robot: true, bot: null, sorot: new Set(), propAb: false, film: true, fokus: false
+    tema: 'terang', documentBusy: false, robot: true, bot: null, sorot: new Set(), propAb: false, film: true, fokus: false
   })
 }
 resetStore()
@@ -50,6 +50,23 @@ function cariEl(id) {
   return null
 }
 const terpilih = () => S.sel.map(cariEl).filter(Boolean)
+// A lock on a group also protects every descendant. Layer-panel selection and
+// the lock toggle remain available so a user can unlock a protected subtree.
+function terkunci(ab, el) {
+  const seen = new Set()
+  for (let x = el; x; ) {
+    if (x.kunci === true) return true
+    if (!x.id || seen.has(x.id)) break
+    seen.add(x.id)
+    x = x.induk ? ab.elemen.find(p => p.id === x.induk) : null
+  }
+  return false
+}
+function bolehUbah(items = terpilih()) {
+  if (!items?.length || !items.some(({ ab, el }) => terkunci(ab, el))) return true
+  host.notify?.({ kind: 'info', message: 'Unlock the selected layer before editing it.' })
+  return false
+}
 
 // perubahan + undo. gabung=true → ketikan beruntun digabung jadi satu langkah undo
 function snap() { if (S.doc) { S.undo.push(JSON.stringify(S.doc)); if (S.undo.length > 60) S.undo.shift(); S.redo = [] } }
@@ -507,7 +524,7 @@ async function buka(path) {
   const gagalBuka = pesan => { S.status = pesan; if (!S.doc) S.fase = 'pilih-file'; S.ctx.storage.remove('file'); host.notify({ kind: 'info', message: pesan }); emit() }
   if (!r.ok) return gagalBuka('Could not open ' + path + ': ' + (r.message || r.error))
   let d; try { d = normalisasi(JSON.parse(r.text)) } catch (e) { return gagalBuka('Design file is damaged (' + path + '): ' + e.message) }
-  Object.assign(S, { doc: d, file: path, sel: [], ab: d.artboards[0]?.id || null, undo: [], redo: [], dirty: false, edit: null, fase: 'siap' })
+  Object.assign(S, { doc: d, file: path, sel: [], patchArea: null, ab: d.artboards[0]?.id || null, undo: [], redo: [], dirty: false, edit: null, fase: 'siap' })
   S.lastMtime = r.mtimeMs || (await S.ctx.files.stat(S.folder.id, path)).mtimeMs || 0
   S.ctx.storage.set('file', path)
   emit(); setTimeout(() => fitSemua(), 30); tulisAktif()
@@ -563,6 +580,7 @@ async function cekAgen() {
   if (!sibuk) _agenFile = null
 }
 async function pantau() {
+  if (S.documentBusy) return
   if (S.folder) await cekAgen()
   if (S.folder && ++_tick % 3 === 0) {   // file baru dari agent → langsung dibuka (kalau "Ikuti agent" aktif)
     const lama = new Set(S.files); await muatDaftar()
@@ -750,7 +768,8 @@ function fitKotak(x, y, w, h, coba = 0) {
   if (!ukuranView().w || !ukuranView().h) { if (coba < 40) setTimeout(() => fitKotak(x, y, w, h, coba + 1), 50); return }
   // sisakan ruang untuk panel melayang yang sedang terbuka
   const v = ukuranView(), m = 40
-  const kiri = !S.fokus && S.panelKiri ? 240 : 0, kanan = !S.fokus && (S.sel.length || S.propAb) ? 276 : 0, bawah = !S.fokus && S.film ? 96 : 0
+  const panel = !S.fokus
+  const kiri = panel && S.panelKiri ? 240 : 0, kanan = panel && (S.sel.length || S.propAb) ? 276 : 0, bawah = panel && S.film ? 96 : 0
   const lw = v.w - kiri - kanan - m * 2, lh = v.h - bawah - m * 2
   S.zoom = Math.max(0.03, Math.min(4, Math.min(lw / w, lh / h)))
   S.pan = { x: kiri + m + (lw - w * S.zoom) / 2 - x * S.zoom, y: m + (lh - h * S.zoom) / 2 - y * S.zoom }
@@ -780,7 +799,9 @@ function denganTurunan(items = terpilih()) {
 }
 function hapusSel() {
   if (!S.sel.length) return
-  const buang = new Set(denganTurunan().map(x => x.el.id))
+  const items = denganTurunan()
+  if (!bolehUbah(items)) return
+  const buang = new Set(items.map(x => x.el.id))
   ubah(d => d.artboards.forEach(ab => { ab.elemen = ab.elemen.filter(e => !buang.has(e.id)) })); S.sel = []; emit()
 }
 function anakInstSet(ab) {
@@ -802,6 +823,7 @@ function klonPohon(asli, dx = 0, dy = 0, abTujuan = null) {
 }
 function duplikatSel() {
   const baru = [], pilihIds = new Set(S.sel)
+  if (!bolehUbah(denganTurunan())) return
   ubah(() => terpilih().forEach(({ ab, el }) => {
     // lewati anak bila induknya juga ikut dipilih
     for (let x = el; x.induk;) { if (pilihIds.has(x.induk)) return; x = cariEl(x.induk)?.el; if (!x) break }
@@ -816,6 +838,7 @@ function duplikatSel() {
 // Ctrl+G: bungkus elemen terpilih (satu artboard, induk yang sama) jadi grup; Ctrl+Shift+G: lepas grup
 function grupkanSel() {
   const items = terpilih(); if (!items.length) return
+  if (!bolehUbah(denganTurunan(items))) return
   const ab = items[0].ab, sama = items.filter(x => x.ab === ab && (x.el.induk || null) === (items[0].el.induk || null))
   if (!sama.length) return
   const kotak = sama.map(({ el }) => [el.x, el.y, el.x + (el.w || 100), el.y + tinggi(el)])
@@ -834,6 +857,7 @@ const semuaMaster = () => (S.doc?.artboards || []).flatMap(ab => ab.elemen.filte
 const jumlahInstance = id => (S.doc?.artboards || []).reduce((n, ab) => n + ab.elemen.filter(e => e.salinan === id).length, 0)
 function jadikanKomponen() {
   let items = terpilih(); if (!items.length) return
+  if (!bolehUbah(denganTurunan(items))) return
   if (items.length > 1 || !isGrup(items[0].el)) { grupkanSel(); items = terpilih() }
   const { el } = items[0]; if (el.salinan) return
   ubah(() => { el.komponen = true; el.nama = el.nama && el.nama !== 'Group' && el.nama !== 'Grup' ? el.nama : 'Component ' + (semuaMaster().length + 1) })
@@ -844,8 +868,8 @@ function sisipInstance(id) {
   const inst = { id: uid('i'), tipe: 'grup', salinan: id, x: Math.round((ab.w - (m.el.w || 200)) / 2), y: Math.round((ab.h - (m.el.h || 100)) / 2) }
   ubah(() => { ab.elemen.push(inst) }); S.sel = [inst.id]; S.ab = ab.id; emit(); tulisAktif()
 }
-function lepasInstanceSel() { const it = terpilih().find(x => x.el.salinan); if (!it) return; ubah(d => lepasInstance(d, it.el.id, () => uid())); emit() }
-function resetTimpaan() { const it = terpilih().find(x => x.el.salinan); if (!it) return; ubah(() => { delete it.el.timpa }); emit() }
+function lepasInstanceSel() { const it = terpilih().find(x => x.el.salinan); if (!it || !bolehUbah(denganTurunan([it]))) return; ubah(d => lepasInstance(d, it.el.id, () => uid())); emit() }
+function resetTimpaan() { const it = terpilih().find(x => x.el.salinan); if (!it || !bolehUbah([it])) return; ubah(() => { delete it.el.timpa }); emit() }
 function keMaster() { const it = terpilih().find(x => x.el.salinan); const m = it && semuaMaster().find(x => x.el.id === it.el.salinan); if (!m) return; S.sel = [m.el.id]; S.ab = m.ab.id; fitAb(m.ab); emit() }
 function PanelKomponen({ el, multi }) {
   if (multi || !isGrup(el)) return h('div', { className: 'kv-btnrow' }, h('button', { onClick: jadikanKomponen, title: 'Ctrl+Alt+K' }, '◆ Make component'))
@@ -878,6 +902,7 @@ function ThumbEl({ ab, el }) {
 }
 function lepasGrup() {
   const grup = terpilih().filter(({ el }) => isGrup(el)); if (!grup.length) return
+  if (!bolehUbah(grup.flatMap(x => denganTurunan([x])))) return
   const lepas = []
   ubah(() => grup.forEach(({ ab, el }) => {
     for (const c of ab.elemen) if (c.induk === el.id) { if (el.induk) c.induk = el.induk; else delete c.induk; lepas.push(c.id) }
@@ -886,6 +911,7 @@ function lepasGrup() {
   S.sel = lepas; emit(); tulisAktif()
 }
 function urutan(arah) {
+  if (!bolehUbah(denganTurunan())) return
   ubah(() => terpilih().forEach(({ ab, el }) => {
     const i = ab.elemen.indexOf(el); ab.elemen.splice(i, 1)
     const j = arah === 'depan' ? ab.elemen.length : arah === 'belakang' ? 0 : Math.max(0, Math.min(ab.elemen.length, i + (arah === 'naik' ? 1 : -1)))
@@ -893,6 +919,7 @@ function urutan(arah) {
   }))
 }
 function ratakan(cara) {
+  if (!bolehUbah(denganTurunan())) return
   ubah(() => terpilih().forEach(({ ab, el }) => {
     const t = tinggi(el)
     if (cara === 'kiri') el.x = 0; if (cara === 'tengah') el.x = Math.round((ab.w - el.w) / 2); if (cara === 'kanan') el.x = ab.w - el.w
@@ -1083,7 +1110,7 @@ async function svgAb(ab) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgN(ab.w)}" height="${svgN(ab.h)}" viewBox="0 0 ${svgN(ab.w)} ${svgN(ab.h)}"><defs>${defs.join('')}</defs>${body.join('')}</svg>`
 }
 // PDF sederhana: tiap artboard = satu halaman berisi gambar JPEG (ukuran halaman = ukuran artboard)
-function buatPdfBytes(hal) {
+function buatPdfBytes(hal, marker = '') {
   const enc = new TextEncoder(), parts = [], offs = []; let len = 0
   const push = d => { const b = typeof d === 'string' ? enc.encode(d) : d; parts.push(b); len += b.length }
   const obj = (id, ...isi) => { offs[id] = len; push(`${id} 0 obj\n`); isi.forEach(push); push('\nendobj\n') }
@@ -1098,13 +1125,37 @@ function buatPdfBytes(hal) {
     obj(pid + 2, `<< /Type /XObject /Subtype /Image /Width ${p.pw} /Height ${p.ph} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpg.length} >>\nstream\n`, p.jpg, '\nendstream')
   })
   const xref = len
-  push(`xref\n0 ${n + 1}\n0000000000 65535 f \n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join(''))
-  push(`trailer\n<< /Size ${n + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`)
+  push(`xref\n0 ${n + 1}\n0000000000 65535 f\r\n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n\r\n').join(''))
+  push(`trailer\n<< /Size ${n + 1} /Root 1 0 R >>\n${marker}startxref\n${xref}\n%%EOF`)
   const out = new Uint8Array(len); let pos = 0
   for (const b of parts) { out.set(b, pos); pos += b.length }
   return out
 }
 const buatPdf = hal => new Blob([buatPdfBytes(hal)], { type: 'application/pdf' })
+async function buatPdfHybrid(hal, doc) {
+  if (S.ctx?.documentAction) {
+    const r = await S.ctx.documentAction({ action: 'export_pdf', file: new File([buatPdf(hal)], 'design.pdf'), doc })
+    if (r?.ok && r.blob) return r.blob
+    if (!r?.unsupported) throw Error(r?.message || 'PDF belum bisa diunduh.')
+  }
+  // Hermes Desktop without a document endpoint uses the same v1 marker
+  // before startxref. Offsets still refer to the original objects.
+  const raw = new Blob([JSON.stringify(doc)])
+  if (raw.size > 32 * 1024 * 1024) throw Error('Desain melebihi batas 32 MiB untuk Hybrid PDF.')
+  if (typeof CompressionStream !== 'function') throw Error('Buka Kanvas Studio lokal untuk menyimpan Hybrid PDF pada perangkat ini.')
+  const stream = raw.stream().pipeThrough(new CompressionStream('deflate'))
+  const packed = new Uint8Array(await new Response(stream).arrayBuffer())
+  let binary = ''
+  for (let i = 0; i < packed.length; i += 32768) binary += String.fromCharCode(...packed.subarray(i, i + 32768))
+  const bytes = buatPdfBytes(hal, '%KANVAS-DOCUMENT-1 ' + btoa(binary) + '\n')
+  if (bytes.length > 64 * 1024 * 1024) throw Error('PDF melebihi 64 MiB. Kurangi resolusi ekspor.')
+  return new Blob([bytes], { type: 'application/pdf' })
+}
+async function unduhExcel(args, nama) {
+  const r = await aksiDokumen({ ...args, action: 'export_xlsx' })
+  if (!r.blob) throw Error('Host belum menyediakan unduhan Excel.')
+  await simpanBlob(r.blob, (nama || 'laporan') + '.xlsx', 'Excel')
+}
 const keBlob = (c, type, q) => new Promise(r => c.toBlob(r, type, q))
 async function simpanBlob(blob, nama, jenis) {
   if (window.showSaveFilePicker) {
@@ -1135,12 +1186,21 @@ async function ekspor(jenis) {
     } else if (jenis === 'svg') {
       await simpanBlob(new Blob([await svgAb(ab)], { type: 'image/svg+xml' }), `${namaDasar(ab)}.svg`, 'SVG')
     } else if (jenis === 'pdf' || jenis === 'pdf1') {
-      const list = jenis === 'pdf' ? S.doc.artboards : [ab], hal = []
-      for (const a of list) {
+      const doc = clone(jenis === 'pdf' ? S.doc : { ...S.doc, artboards: [ab] }), hal = []
+      if (jenis === 'pdf1' && doc.komentar) doc.komentar = doc.komentar.filter(k => k.artboard === ab.id)
+      const nama = namaDasar(jenis === 'pdf' ? null : ab)
+      for (const a of doc.artboards) {
         const c = await gambarAb(a, sk)
         hal.push({ w: a.w, h: a.h, pw: c.width, ph: c.height, jpg: new Uint8Array(await (await keBlob(c, 'image/jpeg', 0.92)).arrayBuffer()) })
+        for (const e of a.elemen) if (e.tipe === 'gambar' && e.src && !/^(https?:|data:)/i.test(e.src)) {
+          const image = S.img[e.src]
+          if (image?.status !== 'ok') throw Error('Gambar belum bisa disertakan: ' + e.src)
+          e.src = image.url
+        }
       }
-      await simpanBlob(buatPdf(hal), `${namaDasar(jenis === 'pdf' ? null : ab)}.pdf`, 'PDF')
+      await simpanBlob(await buatPdfHybrid(hal, doc), nama + '.pdf', 'PDF')
+    } else if (jenis === 'xlsx') {
+      await unduhExcel({ doc: S.doc }, namaDasar(null))
     } else if (jenis === 'json') {
       await simpanBlob(new Blob([JSON.stringify(S.doc, null, 1)], { type: 'application/json' }), `${namaDasar(null)}.kanvas.json`, 'Design')
     } else if (jenis === 'pptx') {
@@ -1153,7 +1213,7 @@ async function ekspor(jenis) {
       host.notify({ kind: 'info', message: 'React + Tailwind JSX copied to clipboard' })
     }
     S.status = 'Exported ✓'
-  } catch (e) { S.status = 'Export failed: ' + (e?.message || e) }
+  } catch (e) { S.status = 'Export failed: ' + (e?.message || e); host.notify({ kind: 'info', message: S.status }) }
   emit()
 }
 
@@ -1272,6 +1332,7 @@ function applyBrandUI(brand) {
       const abBg = typeof ab.bg === 'string' ? ab.bg : (ab.bg?.warna?.[0] || '#FFFFFF')
       const abArea = (ab.w || 1) * (ab.h || 1), byId = new Map(ab.elemen.map(e => [e.id, e]))
       for (const el of ab.elemen) {
+        if (terkunci(ab, el)) continue
         if ((el.tipe === 'kotak' || el.tipe === 'grup') && typeof el.fill === 'string') {
           const area = (el.w || 0) * (el.h || 0)
           if (area > 0 && area < abArea * 0.08 && (c.accent || c.primary)) el.fill = c.accent || c.primary
@@ -1280,6 +1341,7 @@ function applyBrandUI(brand) {
       }
       for (const el of ab.elemen) {
         if (el.tipe !== 'teks') continue
+        if (terkunci(ab, el)) continue
         const isDisp = (el.ukuran || 32) >= 36 || ((el.ukuran || 32) >= 28 && (el.tebal || 400) >= 700)
         const nextF = isDisp && f.display ? f.display : (!isDisp && f.body ? f.body : (f.display || f.body))
         if (nextF) el.font = nextF
@@ -1630,24 +1692,74 @@ function Thumb({ ab, lebar }) {
 
 const HANDLE = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 function Seleksi() {
-  const items = terpilih(); if (!items.length) return null
+  const items = terpilih().filter(f => !terkunci(f.ab, f.el)); if (!items.length) return null
+  const bisaUkur = items.length === 1 && !denganTurunan(items).some(f => terkunci(f.ab, f.el))
   const z = S.zoom
   return h(Fragment, null, items.map(({ ab, el }) => {
     const w = el.w || 100, hh = tinggi(el), X = ab.x + el.x, Y = ab.y + el.y
     return h('div', { key: el.id, className: 'kv-sel', style: { left: X, top: Y, width: w, height: hh, borderWidth: 2 / z, transform: el.rotasi ? `rotate(${el.rotasi}deg)` : undefined } },
-      items.length === 1 ? HANDLE.filter(k => el.tipe !== 'teks' || k === 'e' || k === 'w').map(k => h('div', { key: k, 'data-h': k, className: 'kv-h kv-h-' + k, style: { width: 10 / z, height: 10 / z, margin: -5 / z, borderWidth: 1.5 / z } })) : null,
+      bisaUkur ? HANDLE.filter(k => el.tipe !== 'teks' || k === 'e' || k === 'w').map(k => h('div', { key: k, 'data-h': k, className: 'kv-h kv-h-' + k, style: { width: 10 / z, height: 10 / z, margin: -5 / z, borderWidth: 1.5 / z } })) : null,
       items.length === 1 ? h('div', { className: 'kv-dim', style: { fontSize: 11 / z, top: hh + 6 / z, padding: `${2 / z}px ${6 / z}px`, borderRadius: 6 / z } }, `${Math.round(w)} × ${Math.round(hh)}`) : null)
   }))
+}
+function halamanQuickEdit(ab) {
+  return !!ab?.elemen.some(e => e.kunci && e.tipe === 'gambar' && e.nama === 'PDF background')
+}
+// Use the same font metrics as layoutTeks, without changing the cover or adjacent content.
+function ukurPatch(el, kotak) {
+  const isi = el.kapital ? el.teks.toUpperCase() : el.teks
+  const c = mctx(), jarak = (el.spasi || 0) * Math.max(0, isi.length - 1)
+  const batas = Math.floor(Math.min(el.patch.ukuran, kotak.h / (el.lh || 1.2)))
+  for (let ukuran = batas; ukuran >= 8; ukuran--) {
+    c.font = fontStr({ ...el, ukuran })
+    if (c.measureText(isi).width + jarak <= el.w - 0.5) return ukuran
+  }
+  return null
+}
+function tambahPatch() {
+  const ab = abAktif()
+  if (!halamanQuickEdit(ab)) return
+  const v = ukuranView(), pilihan = terpilih().find(f => f.ab === ab && !terkunci(ab, f.el))?.el
+  const area = S.patchArea?.ab === ab.id ? S.patchArea : pilihan && { x: pilihan.x, y: pilihan.y, w: pilihan.w, h: tinggi(pilihan) }
+  const w = Math.min(ab.w, area?.w > 6 ? area.w : Math.max(64, Math.min(200, ab.w * 0.32)))
+  const h = Math.min(ab.h, area?.h > 6 ? area.h : Math.max(22, Math.min(36, ab.h * 0.04)))
+  const cx = v.w ? (v.w / 2 - S.pan.x) / S.zoom - ab.x : ab.w / 2
+  const cy = v.h ? (v.h / 2 - S.pan.y) / S.zoom - ab.y : ab.h / 2
+  const x = Math.round(Math.max(0, Math.min(ab.w - w, area?.x ?? cx - w / 2)))
+  const y = Math.round(Math.max(0, Math.min(ab.h - h, area?.y ?? cy - h / 2)))
+  const ukuran = Math.max(8, Math.min(pilihan?.ukuran || ab.w * 0.022, h / 1.25))
+  const penutup = { id: uid(), tipe: 'kotak', nama: 'Penutup teks', x, y, w, h, fill: '#FFFFFF' }
+  const teks = { id: uid(), tipe: 'teks', nama: 'Teks pengganti', x, y, w, teks: 'Teks baru', font: pilihan?.font && FONT_SISTEM.has(namaFont(pilihan.font)) ? pilihan.font : 'Arial', ukuran: Math.floor(ukuran), lh: 1.15, warna: '#172033', patch: { penutup: penutup.id, ukuran: Math.floor(ukuran) } }
+  const fit = ukurPatch(teks, penutup)
+  if (fit == null) { host.notify({ kind: 'info', message: 'Tandai area patch yang lebih besar.' }); return }
+  teks.ukuran = fit
+  ubah(() => ab.elemen.push(penutup, teks))
+  S.patchArea = null; S.sel = [teks.id]; S.edit = teks.id; S.tool = 'pilih'; emit(); tulisAktif()
+}
+function TombolPatch() {
+  return halamanQuickEdit(abAktif()) ? h('button', { onClick: tambahPatch, title: 'Tandai area pada PDF, lalu ketik teks pengganti' }, 'Tutup & Ubah Teks') : null
 }
 function TeksEditor() {
   const f = S.edit && cariEl(S.edit); const ref = useRef(null)
   useEffect(() => { const t = setTimeout(() => { ref.current?.focus(); ref.current?.select() }, 30); return () => clearTimeout(t) }, [S.edit])
-  if (!f) return null
+  if (!f || terkunci(f.ab, f.el)) return null
   const { ab, el } = f
+  const penutup = el.patch && ab.elemen.find(e => e.id === el.patch.penutup && e.tipe === 'kotak')
   return h('textarea', {
-    ref, className: 'kv-teksedit', defaultValue: el.teks || '', spellCheck: false,
+    ref, wrap: penutup ? 'off' : undefined, className: 'kv-teksedit', defaultValue: el.teks || '', spellCheck: false,
     style: { left: ab.x + el.x, top: ab.y + el.y, width: el.w, minHeight: tinggi(el) + 4, font: fontStr(el), color: el.warna || '#101634', letterSpacing: (el.spasi || 0) + 'px', lineHeight: ((el.ukuran || 32) * (el.lh || 1.2)) + 'px', textAlign: el.rata === 'tengah' ? 'center' : el.rata === 'kanan' ? 'right' : 'left', textTransform: el.kapital ? 'uppercase' : undefined },
-    onInput: e => { ubah(() => { el.teks = e.target.value }, true) },
+    onInput: e => {
+      const draft = penutup ? e.target.value.replace(/[\r\n]+/g, ' ') : e.target.value
+      const ukuran = penutup ? ukurPatch({ ...el, teks: draft }, penutup) : null
+      if (penutup && ukuran == null) {
+        e.target.value = el.teks
+        host.notify({ kind: 'info', message: 'Teks terlalu panjang untuk area ini. Tandai area yang lebih lebar.' })
+        return
+      }
+      const caret = e.target.selectionStart
+      if (penutup && draft !== e.target.value) { e.target.value = draft; e.target.setSelectionRange(caret, caret) }
+      ubah(() => { el.teks = draft; if (penutup) el.ukuran = ukuran }, true)
+    },
     onBlur: () => { S.edit = null; emit(); tulisAktif() },
     onKeyDown: e => { e.stopPropagation(); if (e.key === 'Escape') e.target.blur() }
   })
@@ -1672,6 +1784,7 @@ function Kanvas() {
 
   const mulai = e => {
     if (e.button === 2) return
+    if (e.target.closest?.('.kv-teksedit')) return
     ref.current.focus()
     if (S.edit) { S.edit = null }
     const p = keDunia(e), t = e.target
@@ -1691,7 +1804,8 @@ function Kanvas() {
     if (S.komentarAktif || S.draftKomentar) { S.komentarAktif = null; S.draftKomentar = null }
     const idTitik = t.closest?.('[data-titik]')?.dataset.titik, idPeg = t.closest?.('[data-pegangan]')?.dataset.pegangan
     if (S.editTitik && !panning && (idTitik != null || idPeg)) {
-      const f = cariEl(S.editTitik); snap(); ses.tipe = 'titik'; ses.el = f.el; ses.ab = f.ab; ses.T = titikKeAb(f.el)
+      const f = cariEl(S.editTitik); if (!f || !bolehUbah([f])) { S.editTitik = null; S.titikSel = null; emit(); return }
+      snap(); ses.tipe = 'titik'; ses.el = f.el; ses.ab = f.ab; ses.T = titikKeAb(f.el)
       ses.i = Number(idTitik ?? idPeg.split(':')[0]); ses.peg = idPeg ? idPeg.split(':')[1] : null; ses.awalT = JSON.parse(JSON.stringify(ses.T))
       S.titikSel = ses.i; emit()
     } else if (S.tool === 'pena' && !panning) {
@@ -1706,7 +1820,8 @@ function Kanvas() {
     }
     else if (panning) ses.tipe = 'pan', ses.pan0 = { ...S.pan }
     else if (hnd && S.sel.length === 1) {
-      const { el } = cariEl(S.sel[0]); snap(); ses.tipe = 'ukur'; ses.h = hnd; ses.awal = { x: el.x, y: el.y, w: el.w || 100, h: tinggi(el) }
+      const f = cariEl(S.sel[0]); if (!f || !bolehUbah(denganTurunan([f]))) { emit(); return }
+      const { el } = f; snap(); ses.tipe = 'ukur'; ses.h = hnd; ses.awal = { x: el.x, y: el.y, w: el.w || 100, h: tinggi(el) }
     } else if (idLabel) {
       const ab = abById(idLabel); snap(); S.ab = ab.id; S.sel = []; S.propAb = true; ses.tipe = 'abgeser'; ses.ab = ab; ses.awal = { x: ab.x, y: ab.y }
     } else if (['kotak', 'elips'].includes(S.tool) && abDi(p)) {
@@ -1719,7 +1834,23 @@ function Kanvas() {
       S.edit = S.sel[0]; emit(); return
     } else if (idEl && S.tool === 'pilih') {
       // klik pertama memilih grup terluar; klik lagi masuk satu tingkat; Ctrl/Cmd+klik langsung ke elemen
-      const f = cariEl(idEl), rantai = [f.el]
+      const f = cariEl(idEl); if (!f) return
+      if (terkunci(f.ab, f.el)) {
+        S.ab = f.ab.id; S.sel = []; S.propAb = false
+        if (halamanQuickEdit(f.ab)) {
+          const x0 = p.x - f.ab.x, y0 = p.y - f.ab.y
+          S.patchArea = { ab: f.ab.id, x: x0, y: y0, w: 0, h: 0 }
+          const area = ev => {
+            const q = keDunia(ev), x = Math.max(0, Math.min(f.ab.w, q.x - f.ab.x)), y = Math.max(0, Math.min(f.ab.h, q.y - f.ab.y))
+            S.patchArea = { ab: f.ab.id, x: Math.min(x0, x), y: Math.min(y0, y), w: Math.abs(x - x0), h: Math.abs(y - y0) }; emit()
+          }
+          const end = () => { removeEventListener('pointermove', area); removeEventListener('pointerup', end); removeEventListener('pointercancel', end) }
+          addEventListener('pointermove', area); addEventListener('pointerup', end); addEventListener('pointercancel', end)
+        }
+        emit(); return
+      }
+      S.patchArea = null
+      const rantai = [f.el]
       for (let x = f.el; x.induk;) { const p = cariEl(x.induk)?.el; if (!p) break; rantai.unshift(p); x = p }
       let pilih = rantai[0].id
       if (e.ctrlKey || e.metaKey) pilih = idEl
@@ -1727,6 +1858,7 @@ function Kanvas() {
       if (e.shiftKey) S.sel = S.sel.includes(pilih) ? S.sel.filter(x => x !== pilih) : [...S.sel, pilih]
       else if (!S.sel.includes(pilih)) S.sel = [pilih]
       S.ab = f.ab.id
+      if (!bolehUbah(denganTurunan())) { emit(); return }
       snap(); ses.tipe = 'geser'; ses.awal = Object.fromEntries(denganTurunan().map(({ el }) => [el.id, { x: el.x, y: el.y }])); ses.pindah = false
     } else if (abDi(p)) { S.ab = abDi(p).id; S.sel = []; S.propAb = true; ses.tipe = 'pan'; ses.pan0 = { ...S.pan }; ses.klik = true }
     else { S.sel = []; S.propAb = false; ses.tipe = 'pan'; ses.pan0 = { ...S.pan } }
@@ -1793,6 +1925,7 @@ function Kanvas() {
   const dobel = e => {
     if (S.pena) { S.pena.titik.pop(); return selesaiPena(false) }   // klik kedua menambah titik kembar → buang
     const id = e.target.closest?.('[data-id]')?.dataset.id; const f = id && cariEl(id)
+    if (f && terkunci(f.ab, f.el)) return
     if (f?.el.tipe === 'path' && f.el.titik && !f.el.rotasi) { e.preventDefault(); S.sel = [id]; S.editTitik = id; S.titikSel = null; emit(); return }
     if (f?.el.tipe === 'teks') { e.preventDefault(); S.sel = [id]; S.edit = id; emit() }
     else if (f?.el.tipe === 'gambar') pilihGambar(g => ubah(() => { f.el.src = g.src }))
@@ -1805,6 +1938,7 @@ function Kanvas() {
       (S.doc?.artboards || []).map(ab => h('div', { key: ab.id, className: 'kv-ab' + (ab.id === S.ab ? ' aktif' : ''), style: { left: ab.x, top: ab.y, width: ab.w, height: ab.h } },
         h('div', { 'data-ablabel': ab.id, className: 'kv-ablabel', style: { fontSize: 12 / z, top: -22 / z, height: 20 / z, lineHeight: 20 / z + 'px' } }, `${ab.nama}  ·  ${ab.w}×${ab.h}`),
         h(AbIsi, { ab }))),
+      S.patchArea && S.patchArea.ab === S.ab && S.patchArea.w > 3 ? h('div', { className: 'kv-patcharea', style: { left: abAktif().x + S.patchArea.x, top: abAktif().y + S.patchArea.y, width: S.patchArea.w, height: S.patchArea.h, borderWidth: 1 / z } }) : null,
       h(AgentKerja), S.editTitik ? null : h(Seleksi), h(TeksEditor), h(PenaOverlay), h(EditTitik), h(KomentarPin),
       S.guides.map((g, i) => h('div', { key: i, className: 'kv-guide', style: g.x != null ? { left: g.x, top: g.ab.y, width: 1 / z, height: g.ab.h } : { top: g.y, left: g.ab.x, height: 1 / z, width: g.ab.w } }))))
 }
@@ -1834,7 +1968,9 @@ async function kirimKomentar() {
   const teks = `[Kanvas Studio] Please address the ${daftar.length} open comment${daftar.length > 1 ? 's' : ''} on ${S.file}.\nUse kanvas_comments to read them with element ids and positions, edit the design, then kanvas_resolve_comment with a short reply for each.\n\n${baris}`
   const ok = await host.composer.insertText(null, teks, { mode: 'block' })
   if (ok) { host.composer.submit?.(null, teks) || host.composer.focus(null); S.sesiAgent = host.state?.focusedSessionId?.get?.() || 'tunggu'; S.ctx.storage.set('sesiAgent', S.sesiAgent) }
-  else { await S.ctx.os.writeClipboard(teks); host.notify({ kind: 'info', message: 'Comments copied. Paste them to your agent (Claude Code, Codex, Hermes).' }) }
+  else if (await S.ctx.os.writeClipboard(teks)) {
+    host.notify({ kind: 'info', message: 'Comments copied. Paste them to your agent (Claude Code, Codex, Hermes).' })
+  } else S.modal = { judul: 'Salin instruksi ke chat agent', input: teks }
   S.menu = null; emit()
 }
 // pin komentar di dunia kanvas (ikut zoom, ukuran tetap di layar)
@@ -1939,7 +2075,7 @@ function EditTitik() {
       h('rect', { 'data-titik': i, x: t.x - 5 / z, y: t.y - 5 / z, width: 10 / z, height: 10 / z, fill: S.titikSel === i ? '#7B61FF' : '#fff', stroke: '#7B61FF', strokeWidth: 1.5 / z }))))
 }
 function hapusTitikSel() {
-  const f = S.editTitik && cariEl(S.editTitik); if (!f || S.titikSel == null) return
+  const f = S.editTitik && cariEl(S.editTitik); if (!f || S.titikSel == null || !bolehUbah([f])) return
   const T = titikKeAb(f.el); if (T.length <= 2) return
   T.splice(S.titikSel, 1); S.titikSel = null
   ubah(() => Object.assign(f.el, bidangDariTitik(T, f.el.tutup && T.length > 2)))
@@ -1952,9 +2088,10 @@ function PanelKiri() {
   if (!ab) return null
   return h('aside', { className: 'kv-left kv-float' },
     h('div', { className: 'kv-sectitle' }, `Layers · ${ab.nama}`, h('button', { className: 'kv-x', title: 'Close', onClick: () => { S.panelKiri = false; emit() } }, '✕')),
-    h('div', { className: 'kv-layers' }, urutanLayer(ab).map(({ el, dalam }) => h('div', { key: el.id, className: 'kv-layer' + (S.sel.includes(el.id) ? ' aktif' : ''), style: { paddingLeft: 6 + dalam * 14 }, onClick: e => { S.sel = e.shiftKey ? [...new Set([...S.sel, el.id])] : [el.id]; emit(); tulisAktif() } },
+    h('div', { className: 'kv-layers' }, urutanLayer(ab).map(({ el, dalam }) => h('div', { key: el.id, className: 'kv-layer' + (S.sel.includes(el.id) ? ' aktif' : ''), style: { paddingLeft: 6 + dalam * 14 }, onClick: e => { if (terkunci(ab, el)) return; S.sel = e.shiftKey ? [...new Set([...S.sel, el.id])] : [el.id]; emit(); tulisAktif() } },
       h('i', { className: 'kv-lic kv-lic-' + el.tipe, style: el.tipe !== 'teks' && el.tipe !== 'gambar' && el.tipe !== 'grup' ? { background: fillCss(el.fill) } : null }, el.tipe === 'teks' ? 'T' : el.tipe === 'gambar' ? '▣' : el.tipe === 'grup' ? (el.komponen ? '◆' : el.salinan ? '◇' : el.tata ? (el.tata.arah === 'baris' ? '⇉' : '⇊') : '▢') : ''),
       h('span', null, el.nama || (el.tipe === 'teks' ? String(el.teks || '').slice(0, 26) : NAMA_TIPE[el.tipe]) || el.id),
+      el.kunci === true ? h('button', { title: 'Buka kunci layer', 'aria-label': 'Buka kunci ' + (el.nama || el.id), onClick: e => { e.stopPropagation(); ubah(() => { delete el.kunci }) } }, '🔒') : null,
       h('button', { title: el.sembunyi ? 'Show' : 'Hide', onClick: e => { e.stopPropagation(); ubah(() => { el.sembunyi = !el.sembunyi }) } }, el.sembunyi ? '◌' : '●')))),
     h(DaftarKomponen))
 }
@@ -2058,6 +2195,7 @@ function PanelKanan() {
       h('div', { className: 'kv-hint' }, 'Tip: pick Text, Rectangle or Ellipse above, then click or drag on the artboard. Double-click text to type.'))
   }
   const { el } = items[0], multi = items.length > 1
+  if (denganTurunan(items).some(f => terkunci(f.ab, f.el))) return h('aside', { className: 'kv-right' }, 'Buka kunci layer melalui panel Layers untuk mengubahnya.')
   const setEl = fn => set(() => items.forEach(({ el }) => fn(el)))
   return h('aside', { className: 'kv-right' },
     h('div', { className: 'kv-sectitle' }, multi ? `${items.length} elements` : (NAMA_TIPE[el.tipe] || el.tipe), h('span', { className: 'kv-id' }, multi ? '' : el.id)),
@@ -2163,6 +2301,7 @@ function MenuQa({ qa }) {
     !qa.masalah.length && !qa.saran.length ? h('p', { className: 'kv-kmenu-kosong' }, 'Zero overlap, clean margins, strong contrast, and cohesive typography.') : null,
     (qa.masalah.length || qa.saran.length) ? h('button', { className: 'kv-kirim', onClick: kirimQa }, 'Send QA fixes to agent') : null)
 }
+
 function Atas({ diPane } = {}) {
   const qa = hitungQaCepat(S.doc), br = brandAktif()
   const qaCls = qa.masalah.length || qa.skor < 65 ? 'err' : qa.skor < 85 ? 'warn' : 'ok'
@@ -2183,7 +2322,7 @@ function Atas({ diPane } = {}) {
           h('div', { className: 'kv-mhead' }, 'Smart Resize (copy active)'),
           RESIZE_PRESET.map(p => h('button', { key: 'r-' + p.nama, onClick: () => smartResizeUI(p) }, h('b', null, '⇄ ' + p.nama), h('span', null, `${p.w}×${p.h}`)))) : null)),
     h('div', { className: 'kv-tools' },
-      h('button', { title: 'Undo (Ctrl+Z)', disabled: !S.undo.length, onClick: undo }, '↶'), h('button', { title: 'Redo (Ctrl+Y)', disabled: !S.redo.length, onClick: redo }, '↷')),
+      h(TombolPatch), h('button', { title: 'Undo (Ctrl+Z)', disabled: !S.undo.length, onClick: undo }, '↶'), h('button', { title: 'Redo (Ctrl+Y)', disabled: !S.redo.length, onClick: redo }, '↷')),
     h('div', { style: { flex: 1 } }),
     h('div', { className: 'kv-dd' }, h('button', { className: 'kv-ghost', title: 'Brand Kits (colors, fonts, apply)', onClick: () => { muatBrand(); S.menu = S.menu === 'brand' ? null : 'brand'; emit() } },
       '🎨', h('span', { className: 'kv-lbl' }, br ? ` ${br.name.slice(0, 12)}` : ' Brand')),
@@ -2196,7 +2335,7 @@ function Atas({ diPane } = {}) {
     h('div', { className: 'kv-dd' }, h('button', { className: 'kv-ghost', onClick: () => { S.menu = S.menu === 'ex' ? null : 'ex'; emit() } }, '⤓', h('span', { className: 'kv-lbl' }, ' Export')),
       S.menu === 'ex' ? h('div', { className: 'kv-menu kanan', ref: tempelMenu(true) },
         h('div', { className: 'kv-mrow' }, 'Resolution', [1, 2, 3, 4].map(k => h('button', { key: k, className: S.skala === k ? 'on' : '', onClick: () => { S.skala = k; emit() } }, k + 'x'))),
-        [['png', 'PNG', 'current artboard'], ['jpg', 'JPG', 'current artboard'], ['pdf', 'PDF', 'all artboards (deck)'], ['pdf1', 'PDF', 'current artboard'], ['pptx', 'PowerPoint (.pptx)', 'all artboards, editable'], ['svg', 'SVG', 'current artboard, editable'], ['html', 'HTML / CSS', 'Flexbox code export'], ['react', 'Copy React JSX', 'to clipboard'], ['json', 'Design file', '.kanvas.json'], ['folder', 'Save to folder…', 'copy design + images'], ['salin', 'Copy PNG', 'to clipboard']]
+        [['png', 'PNG', 'current artboard'], ['jpg', 'JPG', 'current artboard'], ['pdf', 'Hybrid PDF', 'all artboards (deck)'], ['pdf1', 'Hybrid PDF', 'current artboard'], ['xlsx', 'Excel (.xlsx)', 'editable tables'], ['pptx', 'PowerPoint (.pptx)', 'all artboards, editable'], ['svg', 'SVG', 'current artboard, editable'], ['html', 'HTML / CSS', 'Flexbox code export'], ['react', 'Copy React JSX', 'to clipboard'], ['json', 'Design file', '.kanvas.json'], ['folder', 'Save to folder…', 'copy design + images'], ['salin', 'Copy PNG', 'to clipboard']]
           .map(([k, a, b]) => h('button', { key: k, onClick: () => ekspor(k) }, h('b', null, a), h('span', null, b)))) : null),
     diPane && S.ctx.runAction ? h('button', { className: 'kv-ghost kv-ic', title: 'Fold the canvas (Ctrl+J)', onClick: umpetin }, '⇥') : null,
     h('div', { className: 'kv-dd' }, h('button', { className: 'kv-agent', title: 'Comments for your agent', onClick: () => { S.menu = S.menu === 'kom' ? null : 'kom'; emit() } },
@@ -2208,7 +2347,7 @@ function Modal() {
   const tutup = () => { S.modal = null; emit() }
   return h('div', { className: 'kv-modal', onPointerDown: e => { if (e.target === e.currentTarget) tutup() } },
     h('div', { className: 'kv-mbox' }, h('b', null, m.judul), m.pesan ? h('p', null, m.pesan) : null,
-      m.input !== undefined ? h('textarea', { autoFocus: true, value: v, rows: 4, onChange: e => setV(e.target.value), onKeyDown: e => { e.stopPropagation(); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { tutup(); m.aksi(v) } } }) : null,
+      m.input !== undefined ? h('textarea', { autoFocus: true, value: v, rows: 4, onChange: e => setV(e.target.value), onKeyDown: e => { e.stopPropagation(); if (m.aksi && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { tutup(); m.aksi(v) } } }) : null,
       m.konten || null,
       m.tanpaAksi ? null : h('div', { className: 'kv-mact' }, h(Button, { variant: 'secondary', size: 'sm', onClick: tutup }, 'Cancel'), m.ok ? h(Button, { size: 'sm', onClick: () => { tutup(); m.aksi?.(v) } }, m.ok) : null)))
 }
@@ -2277,6 +2416,43 @@ function muatTerakhir() {
 }
 const waktuLalu = ms => { const d = (Date.now() - ms) / 60000; return d < 1 ? 'just now' : d < 60 ? Math.round(d) + ' min ago' : d < 1440 ? Math.round(d / 60) + ' h ago' : Math.round(d / 1440) + ' days ago' }
 const muatKotak = (ab, W, H) => Math.round(ab.w / ab.h > W / H ? W : H * ab.w / ab.h)
+
+async function aksiDokumen(args) {
+  if (typeof S.ctx?.documentAction !== 'function') throw Error('Fitur dokumen belum tersedia di host ini. Buka file melalui Kanvas Studio lokal.')
+  const r = await S.ctx.documentAction({ ...args, folder: S.folder?.id })
+  if (!r?.ok) throw Error(r?.message || 'Dokumen belum bisa diproses. Coba lagi melalui Kanvas Studio lokal.')
+  return r
+}
+function ImporDokumen() {
+  const input = useRef(null), [drag, setDrag] = useState(false), [error, setError] = useState('')
+  async function pilih(file) {
+    if (!file || S.documentBusy) return
+    setError('')
+    const pdf = /\.pdf$/i.test(file.name)
+    if (!pdf && !/\.(xlsx|csv)$/i.test(file.name)) { setError('Pilih file PDF, XLSX, atau CSV.'); return }
+    S.documentBusy = true; emit()
+    try {
+      if (S.dirty) { await simpanSekarang(); if (S.dirty) throw Error(S.status) }
+      const r = await aksiDokumen(pdf ? { action: 'import_pdf', mode: 'quick_edit', file }
+        : { action: 'import_xlsx', create_report: true, file })
+      if (!r.file) throw Error('Host tidak mengembalikan dokumen yang bisa dibuka.')
+      await muatDaftar(); await buka(r.file)
+      if (S.file !== r.file || S.fase !== 'siap') throw Error(S.status || 'Dokumen belum bisa dibuka.')
+      S.tool = 'pilih'; S.fokus = false
+      S.status = r.message || (!pdf ? 'Draft laporan siap diperiksa.' : r.isHybrid ? 'PDF dibuka dengan desain aslinya.' : 'Latar PDF terkunci. Tandai area, lalu pilih Tutup & Ubah Teks.')
+    } catch (e) { setError(e?.message || 'Dokumen belum bisa dibuka.') }
+    finally { S.documentBusy = false; emit() }
+  }
+  return h('div', { className: 'kv-impor' + (drag ? ' kv-drop' : ''),
+    onDragOver: e => { e.preventDefault(); e.dataTransfer.dropEffect = S.documentBusy ? 'none' : 'copy'; if (!S.documentBusy) setDrag(true) },
+    onDragLeave: e => { if (!e.currentTarget.contains(e.relatedTarget)) setDrag(false) },
+    onDrop: e => { e.preventDefault(); setDrag(false); pilih(e.dataTransfer.files[0]) } },
+    h('input', { type: 'file', ref: input, hidden: true, accept: '.pdf,.xlsx,.csv', 'aria-label': 'Impor PDF / Excel',
+      onChange: e => { const f = e.target.files[0]; e.target.value = ''; pilih(f) } }),
+    h('button', { type: 'button', disabled: S.documentBusy, onClick: () => input.current?.click() }, S.documentBusy ? 'Memproses dokumen…' : 'Impor PDF / Excel'),
+    h('small', null, 'atau tarik PDF, XLSX, atau CSV ke sini'),
+    error ? h('small', { role: 'alert' }, error) : null)
+}
 function Mulai() {
   const [brief, setBrief] = useState(''), [judul, setJudul] = useState(''), [gaya, setGaya] = useState('auto')
   useEffect(() => { muatFont('Bricolage Grotesque', 800); muatTemplate(); muatBrand(); muatAset() }, [])
@@ -2288,7 +2464,8 @@ function Mulai() {
   return h('div', { className: 'kv-start' },
     h('section', { className: 'kv-panggung' },
       h('div', { className: 'kv-panggung-kiri' },
-        h('div', { className: 'kv-merek' }, h(Logo), h('span', null, 'Kanvas Studio'), h('span', { className: 'kv-merek-isi' }), h(PilihRuang)),
+        h('div', { className: 'kv-merek kv-merek-mode' }, h(Logo), h('span', null, 'Kanvas Studio'), h(PilihRuang)),
+        h(ImporDokumen),
         h('h1', null, 'Design anything.', h('br'), 'Your agent draws it.'),
         h('p', null, 'Adaptive Design Intelligence, multi-brand Brand Kits, native charts & decks (.pptx), Smart Resize, and Visual QA — 100% free, open-source, and local-first.'),
         h('div', { className: 'kv-brief' },
@@ -2348,7 +2525,7 @@ function KanvasApp({ diPane } = {}) {
   useStore()
   const root = useRef(null)
   const kunci = e => {
-    if (/input|textarea|select/i.test(e.target.tagName) || S.modal || S.pilihIkon || S.present != null) return
+    if (S.fase !== 'siap' || /input|textarea|select/i.test(e.target.tagName) || S.modal || S.pilihIkon || S.present != null) return
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase()
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo() }
     else if (mod && k === 'y') { e.preventDefault(); redo() }
@@ -2375,8 +2552,8 @@ function KanvasApp({ diPane } = {}) {
     else if (k === 'delete' || k === 'backspace') { e.preventDefault(); hapusSel() }
     else if (S.pena && (k === 'enter' || k === 'escape')) { e.preventDefault(); selesaiPena(false) }
     else if (S.editTitik && (k === 'enter' || k === 'escape')) { S.editTitik = null; S.titikSel = null; emit() }
-    else if (k === 'escape') { S.sel = []; S.tool = 'pilih'; S.menu = null; S.komentarAktif = null; S.draftKomentar = null; emit() }
-    else if (k.startsWith('arrow') && S.sel.length) { e.preventDefault(); const d = e.shiftKey ? 10 : 1; ubah(() => denganTurunan().forEach(({ el }) => { if (k === 'arrowleft') el.x -= d; if (k === 'arrowright') el.x += d; if (k === 'arrowup') el.y -= d; if (k === 'arrowdown') el.y += d }), true) }
+    else if (k === 'escape') { S.sel = []; S.patchArea = null; S.tool = 'pilih'; S.menu = null; S.komentarAktif = null; S.draftKomentar = null; emit() }
+    else if (k.startsWith('arrow') && S.sel.length) { e.preventDefault(); const items = denganTurunan(); if (!bolehUbah(items)) return; const d = e.shiftKey ? 10 : 1; ubah(() => items.forEach(({ el }) => { if (k === 'arrowleft') el.x -= d; if (k === 'arrowright') el.x += d; if (k === 'arrowup') el.y -= d; if (k === 'arrowdown') el.y += d }), true) }
     else if (k === ' ' && !SPASI.on) { SPASI.on = true; root.current?.classList.add('kv-spasi') }
     else if (!mod && k === 'i') { S.pilihIkon = true; emit() }
     else if (!mod && k === 'c') { S.tool = 'komentar'; emit() }
@@ -2564,6 +2741,14 @@ const CSS = `
 .kv-start{flex:1;overflow:auto;padding:20px 24px 40px;display:flex;flex-direction:column;gap:30px;container-type:inline-size;
   background-color:var(--ui-bg-editor);background-image:radial-gradient(color-mix(in srgb,var(--ui-text-tertiary) 22%,transparent) 1px,transparent 1px);background-size:22px 22px}
 .kv-start>*{flex-shrink:0}
+.kv-merek-mode{flex-wrap:wrap}
+.kv-patcharea{position:absolute;box-sizing:border-box;border:1px dashed #a54226;background:#ff92391c;pointer-events:none}
+.kv-impor{align-self:flex-start;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;max-width:100%;border-radius:8px}
+.kv .kv-impor button{min-height:34px;padding:6px 11px;border:1px solid #ffffff55;border-radius:7px;background:transparent;color:inherit;font-size:13px;font-weight:700}
+.kv-impor button:hover,.kv-impor.kv-drop{background:#ffffff18}
+.kv-impor button:focus-visible{outline:2px solid #ff8a6b;outline-offset:2px}
+.kv-impor small{color:#d5d7e3;font-size:12px;line-height:1.4}
+.kv-impor [role=alert]{flex-basis:100%;color:#ffd5c7}
 .kv-panggung{position:relative;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:28px;align-items:center;padding:30px 32px 32px;border-radius:26px;
   background:radial-gradient(120% 90% at 100% 0%,#262d63 0%,transparent 55%),#101634;color:#F3F0E9;box-shadow:0 30px 60px -30px rgba(16,22,52,.6);overflow:hidden}
 .kv-panggung-kiri{display:flex;flex-direction:column;gap:16px;min-width:0}

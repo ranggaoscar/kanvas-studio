@@ -4,7 +4,7 @@
 import { createElement as h } from 'react'
 import { createRoot } from 'react-dom/client'
 import plugin, { engine } from '../desktop/plugin.js'
-import { host } from './host.js'
+import { host, createDocumentAction } from './host.js'
 import { periksa } from './lint.js'
 
 const api = (jalur, body) => fetch('/api/' + jalur, {
@@ -37,6 +37,7 @@ const files = {
 }
 const ctx = {
   files,
+  documentAction: createDocumentAction(api),
   storage: {
     get: (k, d) => { const v = localStorage.getItem(kunci(k)); return v == null ? d : JSON.parse(v) },
     set: (k, v) => localStorage.setItem(kunci(k), JSON.stringify(v)),
