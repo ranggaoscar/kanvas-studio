@@ -45,7 +45,10 @@ export function jalur(rel) {
 }
 export const kesalahan = (error, message) => Object.assign(new Error(message), { kode: error })
 
+export const isSecretFile = rel => String(rel ?? '').split(/[\\/]/).some(seg => seg.toLowerCase() === '_llm.json')
+
 export function bacaDesain(file) {
+  if (isSecretFile(file)) throw kesalahan('forbidden', 'Access to _llm.json is restricted.')
   const p = jalur(file)
   if (!existsSync(p)) throw kesalahan('not-found', 'Design not found: ' + file)
   return JSON.parse(readFileSync(p, 'utf8'))
@@ -57,7 +60,10 @@ export function tulisAtomik(p, isi) {
   const tmp = `${p}.${process.pid}.${++_tmpSeq}.tmp`
   writeFileSync(tmp, isi); renameSync(tmp, p)
 }
-export function tulisDesain(file, doc) { tulisAtomik(jalur(file), JSON.stringify(doc, null, 1)) }
+export function tulisDesain(file, doc) {
+  if (isSecretFile(file)) throw kesalahan('forbidden', 'Access to _llm.json is restricted.')
+  tulisAtomik(jalur(file), JSON.stringify(doc, null, 1))
+}
 
 // sinyal "agent sedang bekerja" untuk bar agent di UI
 const AGEN = () => join(RUANG, '_agen.json')   // di akar ruang kerja (folder ber-titik bisa ditolak panel Hermes)

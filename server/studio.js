@@ -16,14 +16,15 @@ import { join, dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { realpathSync, lstatSync, writeFileSync } from 'node:fs'
-import { buildAdminReportDoc } from './presentation.js'
+import { buildAdminReportDoc, buildReportFromSheets } from './presentation.js'
 import { writeXlsx, readTabularFile, sheetsFromDoc } from './xlsx.js'
 import { inspectPdf, extractHybridKanvas, embedHybridKanvas, quickEditPdf } from './pdf-bridge.js'
-import { RUANG, jalur, tulisAtomik, statusAgen, siapkanRuang, bacaDesain } from './ruang.js'
+import { RUANG, jalur, tulisAtomik, statusAgen, siapkanRuang, bacaDesain, isSecretFile } from './ruang.js'
 import { envMinimal } from './render.js'
 import { listBrands, getBrand } from './brand.js'
 import { listAssets } from './assets.js'
 import { listCommunity } from './community.js'
+import { getChatConfig, saveChatConfig, handleChatStream } from './chat.js'
 
 const AKAR = join(dirname(fileURLToPath(import.meta.url)), '..')
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -143,14 +144,15 @@ export async function documentAction(a) {
     return { file: save(a.output || name + '-' + tag + '.kanvas.json', /\.kanvas\.json$/i, encoded), artboards: doc.artboards.length }
   }
   function report(sheets) {
-    const pages = sheets.filter(s => s.headers.length).map(s => ({
-      type: 'data-table', heading: s.name, columns: s.headers.slice(0, 8), rows: s.rows.slice(0, 20).map(r => r.slice(0, 8)),
-      footnote: upload ? 'Draft menampilkan ' + Math.min(20, s.rows.length) + ' dari ' + (s.rowCount ?? s.rows.length) + ' baris dan ' + Math.min(8, s.headers.length) + ' dari ' + s.headers.length + ' kolom.'
-        : 'Draft preview: ' + s.rows.length + ' of ' + s.rowCount + ' rows; first 8 columns.'
-    }))
-    if (!pages.length) throw Error('Tidak ada data untuk membuat laporan.')
+    const valid = sheets.filter(s => s.headers.length)
+    if (!valid.length) throw Error('Tidak ada data untuk membuat laporan.')
     const brand = upload && a.brand ? getBrand(a.brand) : null
-    const draft = design(buildAdminReportDoc({ judul: upload ? stem : 'Imported report', pages, brand }).doc, 'report')
+    const draft = design(buildReportFromSheets(valid, {
+      judul: upload ? stem : 'Imported Report',
+      brand,
+      style: a.style || 'corporate-premium',
+      upload: !!upload
+    }).doc, 'report')
     if (upload && sheets.some(s => (s.rowCount ?? s.rows.length) > 20 || s.headers.length > 8)) {
       draft.message = 'Draft dan unduhan laporan memuat hingga 20 baris dan 8 kolom per lembar sumber.'
     }
@@ -198,6 +200,8 @@ export async function documentAction(a) {
 }
 const API = {
   'POST document': documentAction,
+  'GET chat/config': () => getChatConfig(),
+  'POST chat/config': b => saveChatConfig(b),
   'GET info': () => ({ ok: true, ruangKerja: RUANG, build: BUILD, versi: JSON.parse(readFileSync(join(AKAR, 'package.json'), 'utf8')).version }),
   'GET agen': () => statusAgen(),
   'GET brands': () => ({ ok: true, ...listBrands() }),
@@ -206,23 +210,37 @@ const API = {
   'GET list': q => {
     const dir = q.get('dir') || '', abs = dir ? jalur(dir) : RUANG
     if (!existsSync(abs)) return { ok: true, entries: [] }
-    const entries = readdirSync(abs, { withFileTypes: true }).filter(d => !d.name.startsWith('.'))
+    const entries = readdirSync(abs, { withFileTypes: true }).filter(d => !d.name.startsWith('.') && d.name.toLowerCase() !== '_llm.json')
       .map(d => ({ name: d.name, path: relative(RUANG, join(abs, d.name)).split(sep).join('/'), isDirectory: d.isDirectory() }))
     return { ok: true, entries }
   },
-  'GET read': q => { const p = jalur(q.get('path')); if (!existsSync(p)) return { ok: false, error: 'not-found', message: 'Not found: ' + q.get('path') }; return { ok: true, text: readFileSync(p, 'utf8'), mtimeMs: statSync(p).mtimeMs } },
-  'GET stat': q => { const p = jalur(q.get('path')); if (!existsSync(p)) return { ok: true, exists: false }; const s = statSync(p); return { ok: true, exists: true, isDirectory: s.isDirectory(), size: s.size, mtimeMs: s.mtimeMs } },
+  'GET read': q => {
+    const rel = q.get('path')
+    if (isSecretFile(rel)) return { ok: false, error: 'forbidden', message: 'Use /api/chat/config for LLM settings.' }
+    const p = jalur(rel); if (!existsSync(p)) return { ok: false, error: 'not-found', message: 'Not found: ' + rel }; return { ok: true, text: readFileSync(p, 'utf8'), mtimeMs: statSync(p).mtimeMs }
+  },
+  'GET stat': q => {
+    const rel = q.get('path')
+    if (isSecretFile(rel)) return { ok: false, error: 'forbidden', message: 'Use /api/chat/config for LLM settings.' }
+    const p = jalur(rel); if (!existsSync(p)) return { ok: true, exists: false }; const s = statSync(p); return { ok: true, exists: true, isDirectory: s.isDirectory(), size: s.size, mtimeMs: s.mtimeMs }
+  },
   'GET dataurl': q => {
-    const p = jalur(q.get('path')), m = MIME[extname(p).toLowerCase()]
+    const rel = q.get('path')
+    if (isSecretFile(rel)) return { ok: false, error: 'forbidden', message: 'Image not found' }
+    const p = jalur(rel), m = MIME[extname(p).toLowerCase()]
     if (!m || !m.startsWith('image/') || !existsSync(p)) return { ok: false, error: 'not-found', message: 'Image not found' }
     return { ok: true, url: `data:${m};base64,` + readFileSync(p).toString('base64') }
   },
-  'POST write': b => { if (typeof b.text !== 'string') return { ok: false, error: 'invalid', message: 'text is required' }; tulisAtomik(jalur(b.path), b.text); return { ok: true } },
+  'POST write': b => {
+    if (isSecretFile(b?.path)) return { ok: false, error: 'forbidden', message: 'Use /api/chat/config for LLM settings.' }
+    if (typeof b.text !== 'string') return { ok: false, error: 'invalid', message: 'text is required' }; tulisAtomik(jalur(b.path), b.text); return { ok: true }
+  },
   'POST reveal': () => ({ ok: bukaDiOS(RUANG) })   // hanya ruang kerja
 }
 
 export function mulaiStudio({ port = PORT_DEFAULT, diam = false } = {}) {
   siapkanRuang()
+  let studioHandle = null
   const server = createServer(async (req, res) => {
     try {
       const host = String(req.headers.host || '')
@@ -232,6 +250,10 @@ export function mulaiStudio({ port = PORT_DEFAULT, diam = false } = {}) {
         const asal = req.headers.origin
         if (asal && asal !== 'http://' + host) return kirim(res, 403, { ok: false, error: 'origin' })
         if (req.headers['x-kanvas'] !== '1') return kirim(res, 403, { ok: false, error: 'header' })
+        if (req.method === 'POST' && url.pathname === '/api/chat') {
+          const body = await bacaBody(req, MAX_DOCUMENT_BODY)
+          return await handleChatStream(req, res, body, studioHandle)
+        }
         const f = API[req.method + ' ' + url.pathname.slice(5)]
         if (!f) return kirim(res, 404, { ok: false, error: 'not-found' })
         return kirim(res, 200, await f(req.method === 'POST' ? await bacaBody(req, url.pathname === '/api/document' ? MAX_DOCUMENT_BODY : undefined) : url.searchParams))
@@ -240,15 +262,17 @@ export function mulaiStudio({ port = PORT_DEFAULT, diam = false } = {}) {
       if (req.method !== 'GET' || !file) return kirim(res, 404, 'Not found', 'text/plain')
       return kirim(res, 200, readFileSync(join(AKAR, file)), MIME[extname(file)])
     } catch (e) {
-      kirim(res, 200, { ok: false, error: e.kode || 'io-error', message: e.message })
+      if (!res.headersSent) kirim(res, 200, { ok: false, error: e.kode || 'io-error', message: e.message })
+      else if (!res.writableEnded) res.end()
     }
   })
   return new Promise((ok, gagal) => {
     server.once('error', gagal)
     server.listen(port, '127.0.0.1', () => {
       const url = `http://127.0.0.1:${server.address().port}`
+      studioHandle = { server, url }
       if (!diam) console.error(`Kanvas Studio is running → ${url}   (workspace: ${RUANG})`)
-      ok({ server, url })
+      ok(studioHandle)
     })
   })
 }

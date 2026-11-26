@@ -56,8 +56,10 @@ function panduan(topic = 'full') {
   throw new Error('Unknown guide topic: ' + topic)
 }
 let STUDIO = null, STUDIO_JANJI = null, sudahBuka = false
+let OVERRIDE_STUDIO = null, OVERRIDE_SILENT = false
 
 async function studio() {
+  if (OVERRIDE_STUDIO) return OVERRIDE_STUDIO
   if (STUDIO) return STUDIO
   if (STUDIO_JANJI) return STUDIO_JANJI
   const port = Number(process.env.KANVAS_PORT) || 4848
@@ -70,7 +72,7 @@ async function studio() {
 }
 async function bukaStudio(paksa, file) {
   const s = await studio()
-  if ((paksa || !sudahBuka) && process.env.KANVAS_NO_OPEN !== '1') { bukaDiOS(s.url + (file ? '/?buka=' + encodeURIComponent(file) : '/')); sudahBuka = true }
+  if (!OVERRIDE_SILENT && (paksa || !sudahBuka) && process.env.KANVAS_NO_OPEN !== '1') { bukaDiOS(s.url + (file ? '/?buka=' + encodeURIComponent(file) : '/')); sudahBuka = true }
   return s.url
 }
 
@@ -581,6 +583,34 @@ const ALAT = [
   { name: 'kanvas_open', description: 'Open Studio in browser.', inputSchema: { type: 'object', properties: {} },
     run: async () => { const url = await bukaStudio(true); return [teks(`Studio opened in the user's browser: ${url}\nIf nothing appeared, tell the user to open ${url} themselves (it can be bookmarked).`)] } }
 ]
+
+let _inProcessQueue = Promise.resolve()
+export function getKanvasTools() { return ALAT.map(({ run, ...t }) => t) }
+export function getQuickGuide() { return panduan('quick') }
+export function callKanvasTool(name, args = {}, { studio: studioRef = null, silentOpen = true } = {}) {
+  const run = async () => {
+    const alat = ALAT.find(t => t.name === name)
+    if (!alat) return { content: [teks('Unknown tool: ' + name)], isError: true }
+    const prevStudio = OVERRIDE_STUDIO, prevSilent = OVERRIDE_SILENT
+    OVERRIDE_STUDIO = studioRef || null
+    OVERRIDE_SILENT = !!silentOpen
+    const f = args?.file
+    tandaiAgen(alat.name, f)
+    try {
+      const result = await alat.run(args || {})
+      if (!['kanvas_create', 'kanvas_edit', 'kanvas_resolve_comment', 'kanvas_brand', 'kanvas_resize', 'kanvas_campaign', 'kanvas_dataviz', 'kanvas_presentation'].includes(alat.name)) tandaiAgen(alat.name, f)
+      return Array.isArray(result) ? { content: result } : result
+    } catch (e) {
+      return { content: [teks('Error: ' + e.message)], isError: true }
+    } finally {
+      OVERRIDE_STUDIO = prevStudio
+      OVERRIDE_SILENT = prevSilent
+    }
+  }
+  const next = _inProcessQueue.then(run, run)
+  _inProcessQueue = next.catch(() => {})
+  return next
+}
 
 export async function jalankanMcp() {
   siapkanRuang()

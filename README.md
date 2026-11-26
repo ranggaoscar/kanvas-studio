@@ -14,7 +14,7 @@ Kanvas Studio is an **agent-native visual design engine** — not just another t
 
 **100% free, MIT open-source, and local-first — zero paywalls, zero subscriptions, zero premium tiers, zero cloud lock-in.** Funded strictly through voluntary community sponsorship and donations.
 
-[Quick Start](#quick-start) · [Hermes Desktop](#use-inside-hermes-desktop) · [Standalone MCP](#use-locally-without-hermes-mcp) · [Design Intelligence](#design-intelligence) · [MCP Tools (23)](#agent-mcp-tools) · [Roadmap](#roadmap) · [Support Kanvas Studio](#support-kanvas-studio)
+[Quick Start](#quick-start) · [Local Chat (BYOK / Ollama)](#standalone-local-chat-byok--ollama) · [Hermes Desktop](#use-inside-hermes-desktop) · [Standalone MCP](#use-locally-without-hermes-mcp) · [Design Intelligence](#design-intelligence) · [MCP Tools (23)](#agent-mcp-tools) · [Roadmap](#roadmap) · [Support Kanvas Studio](#support-kanvas-studio)
 
 ---
 
@@ -53,6 +53,15 @@ hermes plugins install https://github.com/ranggaoscar/kanvas-studio
 ```
 
 Then enable **Kanvas Studio** under **Capabilities → Plugins** and restart Hermes. The canvas opens from the sidebar, the status-bar **Kanvas** button, or **Ctrl+Shift+K**.
+
+### Standalone Local Chat (BYOK / Ollama)
+
+Prefer chatting directly inside the local studio browser without configuring an external MCP client? Start the studio (`npx -y kanvas-studio`) and use the built-in **Floating Prompt Bar** at the bottom of the canvas:
+
+- **1-click presets (`⚙`):** connect to **Ollama Lokal** (`http://localhost:11434/v1`, free & offline), **OpenRouter**, **OpenAI**, or any **Custom OpenAI-Compatible URL** + model name.
+- **Direct access to all 23 `kanvas_*` tools:** streams progress live into a collapsible **Agent Progress Drawer** and updates the canvas in real time.
+- **File attachments (`+`):** attach `.pdf`, `.xlsx`, `.csv`, `.png`, `.jpg`, or `.svg` files straight into the workspace so the agent can build A4 reports, run PDF Quick Edit, or place images immediately.
+- **Local-only privacy & Hermes compatibility:** settings are stored locally in `<workspace>/_llm.json` (the server never returns raw API keys to the browser or prints them in logs). Inside **Hermes Desktop**, the Floating Prompt Bar is automatically hidden so it never duplicates Hermes's native chat panel.
 
 ---
 

@@ -22,6 +22,24 @@ function isDarkBg(bg) {
 function contrastHex(bgHex) {
   return isDarkBg(bgHex) ? '#F8FAFC' : '#111827'
 }
+function relLum(rgb) {
+  const ch = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }
+  return 0.2126 * ch(rgb[0]) + 0.7152 * ch(rgb[1]) + 0.0722 * ch(rgb[2])
+}
+function ensureInkContrast(fgHex, bgHex, minRatio = 4.6) {
+  const fg = hexToRgb(fgHex), bg = hexToRgb(typeof bgHex === 'string' ? bgHex : '#FFFFFF')
+  if (!fg || !bg) return fgHex
+  const bgL = relLum(bg)
+  const ratio = rgb => { const l = relLum(rgb); return (Math.max(l, bgL) + 0.05) / (Math.min(l, bgL) + 0.05) }
+  if (ratio(fg) >= minRatio) return fgHex
+  const target = bgL < 0.35 ? [255, 255, 255] : [12, 16, 24]
+  for (let step = 1; step <= 20; step++) {
+    const t = step / 20
+    const mix = fg.map((v, i) => Math.round(v + (target[i] - v) * t))
+    if (ratio(mix) >= minRatio) return '#' + mix.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase()
+  }
+  return bgL < 0.35 ? '#F8FAFC' : '#0F172A'
+}
 function fmtVal(v, unit = '') {
   const n = Number(v)
   if (!Number.isFinite(n)) return String(v ?? '')
@@ -33,6 +51,8 @@ export function resolveVizTheme({ abBg = '#FFFFFF', brand = null, theme = {} } =
   const dark = isDarkBg(abBg)
   const bc = brand?.colors || {}, bf = brand?.fonts || {}
   const basePalette = [
+    ...(Array.isArray(theme.palette) ? theme.palette : []),
+    theme.accent,
     bc.accent, bc.primary, bc.secondary,
     ...(Array.isArray(bc.palette) ? bc.palette : []),
     ...(dark ? DARK_SERIES : DEFAULT_SERIES)
@@ -53,30 +73,43 @@ export function resolveVizTheme({ abBg = '#FFFFFF', brand = null, theme = {} } =
   }
 }
 
-function headerNodes(x, y, w, { title, subtitle }, T) {
+function clipText(s, maxChars) {
+  const str = String(s ?? '').trim()
+  if (!maxChars || str.length <= maxChars) return str
+  return str.slice(0, Math.max(1, maxChars - 1)).trimEnd() + '…'
+}
+
+function headerNodes(x, y, w, { title, subtitle }, T, compact = false) {
   const nodes = []
   let cy = y
+  const titleSz = compact ? 18 : 26
+  const subSz = compact ? 13 : 16
   if (title) {
-    nodes.push({ tipe: 'teks', nama: 'Chart Title', x, y: cy, w, teks: String(title), font: T.displayFont, ukuran: 28, tebal: 700, warna: T.text, lh: 1.15 })
-    cy += 38
+    const tStr = clipText(title, compact ? 38 : 68)
+    nodes.push({ tipe: 'teks', nama: 'Chart Title', x, y: cy, w, teks: tStr, font: T.displayFont, ukuran: titleSz, tebal: 700, warna: T.text, lh: 1.15 })
+    cy += Math.ceil(titleSz * 1.15) + 6
   }
   if (subtitle) {
-    nodes.push({ tipe: 'teks', nama: 'Chart Subtitle', x, y: cy, w, teks: String(subtitle), font: T.bodyFont, ukuran: 18, tebal: 400, warna: T.muted, lh: 1.3 })
-    cy += 28
+    const sStr = clipText(subtitle, compact ? 48 : 88)
+    nodes.push({ tipe: 'teks', nama: 'Chart Subtitle', x, y: cy, w, teks: sStr, font: T.bodyFont, ukuran: subSz, tebal: 400, warna: T.muted, lh: 1.25 })
+    cy += Math.ceil(subSz * 1.25) + 6
   }
-  return { nodes, nextY: cy + (nodes.length ? 16 : 0) }
+  return { nodes, nextY: cy + (nodes.length ? (compact ? 10 : 14) : 0) }
 }
 
 function buildBarChart(opts, T) {
   const { x = 120, y = 200, w = 960, h = 520, data = [], unit = '', highlightIndex, showCard = false } = opts
   if (!Array.isArray(data) || !data.length) throw new Error('bar chart requires non-empty "data": [{ label, value, color? }]')
-  const pad = showCard ? 36 : 8
+  const compact = w < 580
+  const pad = showCard ? (compact ? 22 : 32) : 8
   const innerX = x + pad, innerW = Math.max(200, w - pad * 2)
-  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T)
+  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T, compact)
 
-  const labelH = 44, topValH = 34
+  const valSz = compact ? 13 : 16
+  const lblSz = compact ? 13 : 15
+  const labelH = compact ? 30 : 38, topValH = compact ? 26 : 32
   const plotX = innerX, plotY = nextY + topValH
-  const plotW = innerW, plotH = Math.max(120, (y + h - pad) - plotY - labelH)
+  const plotW = innerW, plotH = Math.max(96, (y + h - pad) - plotY - labelH)
   const maxVal = Math.max(1, ...data.map(d => Math.max(0, Number(d.value) || 0)))
 
   // 4 horizontal gridlines
@@ -90,24 +123,32 @@ function buildBarChart(opts, T) {
 
   const n = data.length
   const slotW = plotW / n
-  const barW = Math.max(20, Math.min(110, Math.round(slotW * 0.56)))
+  const barW = Math.max(18, Math.min(compact ? 54 : 104, Math.round(slotW * 0.54)))
+  const lblW = Math.max(24, Math.floor(slotW - 6))
+  const maxLblChars = Math.max(3, Math.floor(lblW / (lblSz * 0.62)))
+  const maxValChars = Math.max(4, Math.floor(lblW / (valSz * 0.62)))
+
+  const cardBg = showCard ? T.surface : T.bg
+  const hiInk = ensureInkContrast(T.accent, cardBg, 4.6)
+
   data.forEach((d, idx) => {
     const val = Math.max(0, Number(d.value) || 0)
     const bh = Math.max(6, Math.round((val / maxVal) * plotH))
     const bx = Math.round(plotX + idx * slotW + (slotW - barW) / 2)
     const by = Math.round(plotY + plotH - bh)
     const isHi = highlightIndex != null ? idx === highlightIndex : false
-    const color = d.color || (isHi ? T.accent : (highlightIndex != null ? T.muted : T.palette[idx % T.palette.length]))
-    nodes.push({ tipe: 'kotak', nama: `Bar ${d.label}`, x: bx, y: by, w: barW, h: bh, radius: 6, fill: color, opacity: highlightIndex != null && !isHi ? 0.55 : 1 })
-    const lblW = Math.max(barW + 24, Math.round(slotW - 8))
+    const mutedBar = T.dark ? '#475569' : '#94A3B8'
+    const color = d.color || (isHi ? T.accent : (highlightIndex != null ? mutedBar : T.palette[idx % T.palette.length]))
+    nodes.push({ tipe: 'kotak', nama: `Bar ${d.label}`, x: bx, y: by, w: barW, h: bh, radius: compact ? 4 : 6, fill: color, opacity: highlightIndex != null && !isHi ? 0.65 : 1 })
     const lx = Math.round(plotX + idx * slotW + (slotW - lblW) / 2)
-    nodes.push({ tipe: 'teks', nama: `Value ${d.label}`, x: lx, y: Math.max(nextY, by - 28), w: lblW, teks: fmtVal(val, unit), font: T.monoFont, ukuran: 17, tebal: 700, warna: T.text, rata: 'tengah', lh: 1.2 })
-    nodes.push({ tipe: 'teks', nama: `Label ${d.label}`, x: lx, y: plotY + plotH + 12, w: lblW, teks: String(d.label || ''), font: T.bodyFont, ukuran: 16, tebal: 600, warna: T.muted, rata: 'tengah', lh: 1.2 })
+    const valY = Math.max(nextY, by - Math.ceil(valSz * 1.2) - 6)
+    nodes.push({ tipe: 'teks', nama: `Value ${d.label}`, x: lx, y: valY, w: lblW, teks: clipText(fmtVal(val, unit), maxValChars), font: T.monoFont, ukuran: valSz, tebal: isHi ? 700 : 600, warna: isHi ? hiInk : T.text, rata: 'tengah', lh: 1.15 })
+    nodes.push({ tipe: 'teks', nama: `Label ${d.label}`, x: lx, y: plotY + plotH + 10, w: lblW, teks: clipText(d.label, maxLblChars), font: T.bodyFont, ukuran: lblSz, tebal: isHi ? 700 : 600, warna: isHi ? T.text : T.muted, rata: 'tengah', lh: 1.15 })
   })
 
   return {
     tipe: 'grup', nama: opts.title || 'Bar Chart', x, y, w, h,
-    ...(showCard ? { fill: T.surface, radius: 16, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
+    ...(showCard ? { fill: T.surface, radius: 12, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
     anak: nodes
   }
 }
@@ -115,33 +156,44 @@ function buildBarChart(opts, T) {
 function buildHBarChart(opts, T) {
   const { x = 120, y = 200, w = 960, h = 480, data = [], unit = '', highlightIndex, showCard = false } = opts
   if (!Array.isArray(data) || !data.length) throw new Error('hbar chart requires non-empty "data": [{ label, value, color? }]')
-  const pad = showCard ? 36 : 8
-  const innerX = x + pad, innerW = Math.max(240, w - pad * 2)
-  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T)
+  const compact = w < 580
+  const pad = showCard ? (compact ? 22 : 32) : 8
+  const innerX = x + pad, innerW = Math.max(220, w - pad * 2)
+  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T, compact)
 
+  const fontSz = compact ? 13 : 16
   const maxVal = Math.max(1, ...data.map(d => Math.max(0, Number(d.value) || 0)))
-  const labelW = Math.round(innerW * 0.28), valW = Math.round(innerW * 0.14), gap = 18
-  const trackX = innerX + labelW + gap, trackW = Math.max(100, innerW - labelW - valW - gap * 2)
-  const availH = Math.max(120, (y + h - pad) - nextY)
-  const rowH = Math.max(36, Math.floor(availH / data.length))
-  const barH = Math.max(16, Math.min(34, Math.round(rowH * 0.52)))
+  const labelW = Math.round(innerW * (compact ? 0.31 : 0.27))
+  const valW = Math.round(innerW * (compact ? 0.23 : 0.17))
+  const gap = compact ? 10 : 16
+  const trackX = innerX + labelW + gap, trackW = Math.max(70, innerW - labelW - valW - gap * 2)
+  const availH = Math.max(100, (y + h - pad) - nextY)
+  const rowH = Math.max(30, Math.floor(availH / data.length))
+  const barH = Math.max(12, Math.min(compact ? 22 : 30, Math.round(rowH * 0.48)))
+  const textH = Math.ceil(fontSz * 1.2)
+  const maxLblChars = Math.max(6, Math.floor(labelW / (fontSz * 0.6)))
+  const maxValChars = Math.max(5, Math.floor(valW / (fontSz * 0.64)))
+  const mutedBar = T.dark ? '#475569' : '#94A3B8'
+  const cardBg = showCard ? T.surface : T.bg
+  const hiInk = ensureInkContrast(T.accent, cardBg, 4.6)
 
   data.forEach((d, idx) => {
     const val = Math.max(0, Number(d.value) || 0)
     const ry = Math.round(nextY + idx * rowH)
     const barY = Math.round(ry + (rowH - barH) / 2)
+    const textY = Math.round(ry + (rowH - textH) / 2)
     const bw = Math.max(8, Math.round((val / maxVal) * trackW))
     const isHi = highlightIndex != null ? idx === highlightIndex : false
-    const color = d.color || (isHi ? T.accent : T.palette[idx % T.palette.length])
-    nodes.push({ tipe: 'teks', nama: `Row ${d.label}`, x: innerX, y: Math.round(ry + (rowH - 22) / 2), w: labelW, teks: String(d.label || ''), font: T.bodyFont, ukuran: 18, tebal: 600, warna: T.text, rata: 'kiri', lh: 1.2 })
+    const color = d.color || (isHi ? T.accent : (highlightIndex != null ? mutedBar : T.palette[idx % T.palette.length]))
+    nodes.push({ tipe: 'teks', nama: `Row ${d.label}`, x: innerX, y: textY, w: labelW, teks: clipText(d.label, maxLblChars), font: T.bodyFont, ukuran: fontSz, tebal: isHi ? 700 : 600, warna: T.text, rata: 'kiri', lh: 1.2 })
     nodes.push({ tipe: 'kotak', nama: `Track ${d.label}`, x: trackX, y: barY, w: trackW, h: barH, radius: Math.round(barH / 2), fill: T.rule, opacity: 0.45 })
-    nodes.push({ tipe: 'kotak', nama: `Bar ${d.label}`, x: trackX, y: barY, w: bw, h: barH, radius: Math.round(barH / 2), fill: color })
-    nodes.push({ tipe: 'teks', nama: `Val ${d.label}`, x: trackX + trackW + gap, y: Math.round(ry + (rowH - 22) / 2), w: valW, teks: fmtVal(val, unit), font: T.monoFont, ukuran: 18, tebal: 700, warna: T.text, rata: 'kanan', lh: 1.2 })
+    nodes.push({ tipe: 'kotak', nama: `Bar ${d.label}`, x: trackX, y: barY, w: bw, h: barH, radius: Math.round(barH / 2), fill: color, opacity: highlightIndex != null && !isHi ? 0.72 : 1 })
+    nodes.push({ tipe: 'teks', nama: `Val ${d.label}`, x: trackX + trackW + gap, y: textY, w: valW, teks: clipText(fmtVal(val, unit), maxValChars), font: T.monoFont, ukuran: fontSz, tebal: 700, warna: isHi ? hiInk : T.text, rata: 'kanan', lh: 1.2 })
   })
 
   return {
     tipe: 'grup', nama: opts.title || 'Horizontal Bar Chart', x, y, w, h,
-    ...(showCard ? { fill: T.surface, radius: 16, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
+    ...(showCard ? { fill: T.surface, radius: 12, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
     anak: nodes
   }
 }
@@ -154,24 +206,41 @@ function buildLineChart(opts, T) {
   const xLabels = labels.length ? labels : (Array.isArray(opts.data) ? opts.data.map(d => String(d.label || '')) : [])
   if (!normalizedSeries.length || !normalizedSeries[0].values?.length) throw new Error('line chart requires "series": [{ name, values: [n...] }] or "data": [{ label, value }]')
 
-  const pad = showCard ? 36 : 8
-  const innerX = x + pad, innerW = Math.max(240, w - pad * 2)
-  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T)
+  const compact = w < 580
+  const pad = showCard ? (compact ? 22 : 32) : 8
+  const innerX = x + pad, innerW = Math.max(220, w - pad * 2)
+  const { nodes, nextY: hdrEnd } = headerNodes(innerX, y + pad, innerW, opts, T, compact)
 
-  const yAxisW = 68, xAxisH = 40
-  const plotX = innerX + yAxisW, plotY = nextY + 12
-  const plotW = Math.max(160, innerW - yAxisW - 12)
-  const plotH = Math.max(120, (y + h - pad) - plotY - xAxisH)
+  let nextY = hdrEnd
+  // Clean horizontal legend row below header when >1 series (never collides with title)
+  if (normalizedSeries.length > 1) {
+    const legSz = compact ? 13 : 14
+    const itemW = Math.min(168, Math.floor(innerW / normalizedSeries.length))
+    normalizedSeries.forEach((s, si) => {
+      const lx = innerX + si * itemW
+      const color = s.color || T.palette[si % T.palette.length]
+      nodes.push({ tipe: 'kotak', x: Math.round(lx), y: nextY + 3, w: 12, h: 12, radius: 3, fill: color })
+      nodes.push({ tipe: 'teks', x: Math.round(lx + 18), y: nextY, w: Math.max(40, itemW - 24), teks: clipText(s.name || `Series ${si + 1}`, Math.max(6, Math.floor((itemW - 24) / (legSz * 0.6)))), font: T.bodyFont, ukuran: legSz, tebal: 600, warna: T.text, lh: 1.2 })
+    })
+    nextY += 26
+  }
+
+  const yAxisW = compact ? 68 : 76, xAxisH = compact ? 32 : 38
+  const tickSz = compact ? 13 : 14
+  const plotX = innerX + yAxisW, plotY = nextY + 8
+  const plotW = Math.max(120, innerW - yAxisW - 8)
+  const plotH = Math.max(100, (y + h - pad) - plotY - xAxisH)
 
   const allVals = normalizedSeries.flatMap(s => (s.values || []).map(Number).filter(Number.isFinite))
   const minVal = Math.min(0, ...allVals), maxVal = Math.max(1, ...allVals)
   const span = Math.max(1e-6, maxVal - minVal)
 
-  // Horizontal gridlines + Y labels
+  // Horizontal gridlines + Y labels (clean integer rounding when max >= 15)
   for (let g = 0; g <= 3; g++) {
     const gy = Math.round(plotY + (plotH * g) / 3)
-    const tickVal = maxVal - (span * g) / 3
-    nodes.push({ tipe: 'teks', x: innerX, y: gy - 11, w: yAxisW - 12, teks: fmtVal(Math.round(tickVal * 10) / 10, unit), font: T.monoFont, ukuran: 14, tebal: 500, warna: T.muted, rata: 'kanan', lh: 1.2 })
+    const rawTick = maxVal - (span * g) / 3
+    const tickVal = Math.abs(maxVal) >= 15 ? Math.round(rawTick) : Math.round(rawTick * 10) / 10
+    nodes.push({ tipe: 'teks', x: innerX, y: Math.max(nextY, gy - 9), w: yAxisW - 10, teks: clipText(fmtVal(tickVal, unit), Math.max(6, Math.floor((yAxisW - 10) / (tickSz * 0.56)))), font: T.monoFont, ukuran: tickSz, tebal: 500, warna: T.muted, rata: 'kanan', lh: 1.15 })
     nodes.push({ tipe: 'path', x: plotX, y: gy, w: plotW, h: 2, vb: [plotW, 2], d: `M0 1H${plotW}`, fill: null, garis: { tebal: g === 3 ? 2 : 1, warna: T.rule }, opacity: g === 3 ? 0.9 : 0.6 })
   }
 
@@ -190,38 +259,39 @@ function buildLineChart(opts, T) {
       const areaD = `${lineD} L${pts.at(-1)[0]} ${plotH} L${pts[0][0]} ${plotH} Z`
       nodes.push({ tipe: 'path', nama: `${s.name || 'Series'} Area`, x: plotX, y: plotY, w: plotW, h: plotH, vb: [plotW, plotH], d: areaD, fill: color, opacity: 0.12 })
     }
-    nodes.push({ tipe: 'path', nama: `${s.name || 'Series'} Line`, x: plotX, y: plotY, w: plotW, h: plotH, vb: [plotW, plotH], d: lineD, fill: null, garis: { tebal: 4, warna: color }, ujung: 'bulat' })
+    nodes.push({ tipe: 'path', nama: `${s.name || 'Series'} Line`, x: plotX, y: plotY, w: plotW, h: plotH, vb: [plotW, plotH], d: lineD, fill: null, garis: { tebal: compact ? 3 : 4, warna: color }, ujung: 'bulat' })
     pts.forEach(([px, py], i) => {
-      nodes.push({ tipe: 'elips', nama: `Pt ${i + 1}`, x: Math.round(plotX + px - 6), y: Math.round(plotY + py - 6), w: 12, h: 12, fill: color, garis: { tebal: 2, warna: T.bg } })
+      const isHi = si === 0 && opts.highlightIndex === i
+      const r = isHi ? 7 : 5
+      nodes.push({ tipe: 'elips', nama: `Pt ${i + 1}`, x: Math.round(plotX + px - r), y: Math.round(plotY + py - r), w: r * 2, h: r * 2, fill: color, garis: { tebal: 2, warna: T.bg } })
     })
   })
 
-  // X-axis labels
+  // X-axis labels strictly bounded inside [plotX .. plotX + plotW]
   const nLbl = xLabels.length
   if (nLbl) {
-    const step = Math.max(1, Math.ceil(nLbl / 8))
-    const lblW = Math.max(60, Math.round(plotW / Math.min(nLbl, 8)))
-    for (let i = 0; i < nLbl; i += step) {
+    const shortLabels = xLabels.every(l => String(l).length <= 4)
+    const maxTicks = compact ? (shortLabels ? 6 : 5) : 8
+    const step = Math.max(1, Math.ceil(nLbl / maxTicks))
+    const tickIndices = []
+    for (let i = 0; i < nLbl; i += step) tickIndices.push(i)
+    if (tickIndices.at(-1) !== nLbl - 1 && nLbl > 1) tickIndices[tickIndices.length - 1] = nLbl - 1
+    const slotW = Math.floor(plotW / Math.max(1, tickIndices.length))
+    const lblW = Math.max(32, slotW - 6)
+    const maxChars = Math.max(3, Math.floor(lblW / (tickSz * 0.6)))
+    tickIndices.forEach((i, ti) => {
       const px = nLbl === 1 ? plotW / 2 : (i / (nLbl - 1)) * plotW
-      nodes.push({ tipe: 'teks', x: Math.round(plotX + px - lblW / 2), y: plotY + plotH + 12, w: lblW, teks: String(xLabels[i]), font: T.bodyFont, ukuran: 15, tebal: 500, warna: T.muted, rata: 'tengah', lh: 1.2 })
-    }
-  }
-
-  // Series legend (top-right when >1 series)
-  if (normalizedSeries.length > 1) {
-    const legW = Math.min(innerW * 0.55, normalizedSeries.length * 160)
-    let lx = innerX + innerW - legW
-    normalizedSeries.forEach((s, si) => {
-      const color = s.color || T.palette[si % T.palette.length]
-      nodes.push({ tipe: 'kotak', x: Math.round(lx), y: y + pad + 10, w: 14, h: 14, radius: 4, fill: color })
-      nodes.push({ tipe: 'teks', x: Math.round(lx + 20), y: y + pad + 6, w: 130, teks: String(s.name || `Series ${si + 1}`), font: T.bodyFont, ukuran: 15, tebal: 600, warna: T.text, lh: 1.2 })
-      lx += 156
+      const isFirst = ti === 0 && tickIndices.length > 1
+      const isLast = ti === tickIndices.length - 1 && tickIndices.length > 1
+      const lx = isFirst ? plotX : isLast ? (plotX + plotW - lblW) : Math.max(plotX, Math.min(plotX + plotW - lblW, Math.round(plotX + px - lblW / 2)))
+      const align = isFirst ? 'kiri' : isLast ? 'kanan' : 'tengah'
+      nodes.push({ tipe: 'teks', x: lx, y: plotY + plotH + 10, w: lblW, teks: clipText(xLabels[i], maxChars), font: T.bodyFont, ukuran: tickSz, tebal: 500, warna: T.muted, rata: align, lh: 1.15 })
     })
   }
 
   return {
     tipe: 'grup', nama: opts.title || 'Line Chart', x, y, w, h,
-    ...(showCard ? { fill: T.surface, radius: 16, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
+    ...(showCard ? { fill: T.surface, radius: 12, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
     anak: nodes
   }
 }
@@ -229,17 +299,19 @@ function buildLineChart(opts, T) {
 function buildDonutChart(opts, T) {
   const { x = 120, y = 200, w = 860, h = 440, data = [], centerLabel = 'TOTAL', centerValue, unit = '', showCard = false } = opts
   if (!Array.isArray(data) || !data.length) throw new Error('donut chart requires non-empty "data": [{ label, value, color? }]')
-  const pad = showCard ? 36 : 8
-  const innerX = x + pad, innerW = Math.max(260, w - pad * 2)
-  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T)
+  const compact = w < 640
+  const pad = showCard ? (compact ? 22 : 28) : 8
+  const innerX = x + pad, innerW = Math.max(240, w - pad * 2)
+  const { nodes, nextY } = headerNodes(innerX, y + pad, innerW, opts, T, compact)
 
-  const availH = Math.max(180, (y + h - pad) - nextY)
-  const size = Math.min(availH, Math.round(innerW * 0.44))
+  const availH = Math.max(150, (y + h - pad) - nextY)
+  const size = Math.min(availH - 8, Math.round(innerW * (compact ? 0.36 : 0.36)))
   const total = data.reduce((s, d) => s + Math.max(0, Number(d.value) || 0), 0) || 1
   const cx = 100, cy = 100, R = 94, r = 58
   let angle = -Math.PI / 2
 
   const polar = (rad, a) => [Math.round((cx + rad * Math.cos(a)) * 100) / 100, Math.round((cy + rad * Math.sin(a)) * 100) / 100]
+  const ringTop = Math.round(nextY + (availH - size) / 2)
   data.forEach((d, idx) => {
     const val = Math.max(0, Number(d.value) || 0)
     const frac = val / total
@@ -252,33 +324,46 @@ function buildDonutChart(opts, T) {
     const [ix2, iy2] = polar(r, a1), [ix1, iy1] = polar(r, a0)
     const pathD = `M${x1} ${y1} A${R} ${R} 0 ${large} 1 ${x2} ${y2} L${ix2} ${iy2} A${r} ${r} 0 ${large} 0 ${ix1} ${iy1} Z`
     const color = d.color || T.palette[idx % T.palette.length]
-    nodes.push({ tipe: 'path', nama: `Slice ${d.label}`, x: innerX, y: Math.round(nextY + (availH - size) / 2), w: size, h: size, vb: [200, 200], d: pathD, fill: color })
+    nodes.push({ tipe: 'path', nama: `Slice ${d.label}`, x: innerX, y: ringTop, w: size, h: size, vb: [200, 200], d: pathD, fill: color })
   })
 
-  // Center figure inside hole
-  const ringTop = Math.round(nextY + (availH - size) / 2)
+  // Center figure strictly inside donut hole (min 13px for Visual QA readability)
   const holeW = Math.round(size * 0.56)
   const holeX = Math.round(innerX + (size - holeW) / 2)
-  nodes.push({ tipe: 'teks', nama: 'Center Value', x: holeX, y: Math.round(ringTop + size * 0.38), w: holeW, teks: centerValue != null ? String(centerValue) : fmtVal(total, unit), font: T.displayFont, ukuran: Math.max(22, Math.round(size * 0.13)), tebal: 800, warna: T.text, rata: 'tengah', lh: 1.05 })
-  nodes.push({ tipe: 'teks', nama: 'Center Label', x: holeX, y: Math.round(ringTop + size * 0.55), w: holeW, teks: String(centerLabel), font: T.monoFont, ukuran: Math.max(12, Math.round(size * 0.048)), tebal: 600, kapital: true, spasi: 1.5, warna: T.muted, rata: 'tengah', lh: 1.2 })
+  const valStr = centerValue != null ? String(centerValue) : fmtVal(total, unit)
+  const valSz = Math.max(16, Math.min(Math.round(size * 0.14), Math.floor(holeW / Math.max(3.5, valStr.length * 0.62))))
+  const lblSz = Math.max(13, Math.min(14, Math.round(size * 0.06)))
+  const valY = Math.round(ringTop + size / 2 - valSz * 0.85)
+  const lblY = valY + Math.ceil(valSz * 1.1) + 4
+  nodes.push({ tipe: 'teks', nama: 'Center Value', x: holeX, y: valY, w: holeW, teks: valStr, font: T.displayFont, ukuran: valSz, tebal: 800, warna: T.text, rata: 'tengah', lh: 1.05 })
+  nodes.push({ tipe: 'teks', nama: 'Center Label', x: holeX, y: lblY, w: holeW, teks: clipText(centerLabel, Math.max(5, Math.floor(holeW / (lblSz * 0.72)))), font: T.monoFont, ukuran: lblSz, tebal: 600, kapital: true, spasi: 1, warna: T.muted, rata: 'tengah', lh: 1.15 })
 
-  // Structured legend on the right
-  const legX = innerX + size + 44, legW = Math.max(180, innerW - size - 44)
-  const legRowH = Math.min(48, Math.max(32, Math.floor(availH / Math.max(1, data.length))))
+  // Structured legend strictly inside [innerX + size + legGap .. innerX + innerW]
+  const legGap = compact ? 22 : 36
+  const legX = innerX + size + legGap, legW = Math.max(140, innerW - size - legGap)
+  const legSz = compact ? 13 : 15
+  const legRowH = Math.min(44, Math.max(28, Math.floor(availH / Math.max(1, data.length))))
   const legStartY = Math.round(nextY + Math.max(0, (availH - data.length * legRowH) / 2))
+  const textArea = Math.max(90, legW - 22)
+  const lblColW = Math.round(textArea * 0.56)
+  const valColW = Math.max(56, textArea - lblColW - 8)
+  const maxLblChars = Math.max(6, Math.floor(lblColW / (legSz * 0.58)))
+
   data.forEach((d, idx) => {
     const val = Math.max(0, Number(d.value) || 0)
     const pct = Math.round((val / total) * 100)
     const ry = legStartY + idx * legRowH
     const color = d.color || T.palette[idx % T.palette.length]
-    nodes.push({ tipe: 'kotak', x: legX, y: ry + 8, w: 16, h: 16, radius: 4, fill: color })
-    nodes.push({ tipe: 'teks', x: legX + 26, y: ry + 4, w: Math.round(legW * 0.56), teks: String(d.label || ''), font: T.bodyFont, ukuran: 18, tebal: 600, warna: T.text, lh: 1.2 })
-    nodes.push({ tipe: 'teks', x: legX + Math.round(legW * 0.62), y: ry + 4, w: Math.round(legW * 0.38), teks: `${fmtVal(val, unit)} (${pct}%)`, font: T.monoFont, ukuran: 17, tebal: 700, warna: T.muted, rata: 'kanan', lh: 1.2 })
+    const txtY = Math.round(ry + (legRowH - Math.ceil(legSz * 1.2)) / 2)
+    nodes.push({ tipe: 'kotak', x: legX, y: txtY + 2, w: 12, h: 12, radius: 3, fill: color })
+    nodes.push({ tipe: 'teks', x: legX + 20, y: txtY, w: lblColW, teks: clipText(d.label, maxLblChars), font: T.bodyFont, ukuran: legSz, tebal: 600, warna: T.text, lh: 1.2 })
+    const rightTxt = unit === '%' ? `${pct}%` : `${fmtVal(val, unit)} (${pct}%)`
+    nodes.push({ tipe: 'teks', x: legX + 20 + lblColW + 8, y: txtY, w: valColW, teks: clipText(rightTxt, Math.max(4, Math.floor(valColW / (legSz * 0.62)))), font: T.monoFont, ukuran: legSz, tebal: 700, warna: T.muted, rata: 'kanan', lh: 1.2 })
   })
 
   return {
     tipe: 'grup', nama: opts.title || 'Donut Chart', x, y, w, h,
-    ...(showCard ? { fill: T.surface, radius: 16, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
+    ...(showCard ? { fill: T.surface, radius: 12, garis: { tebal: 1, warna: T.rule } } : { fill: null }),
     anak: nodes
   }
 }

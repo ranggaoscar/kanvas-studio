@@ -3,6 +3,13 @@
 All notable changes to **Kanvas Studio** are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.5.0]
+
+- **Creative Reports & Editable Auto-Chart Engine:** added deterministic `analyzeTabularData(sheet)` profiler (`server/xlsx.js`, `server/presentation.js`) that auto-detects time vs category dimensions and numeric metrics (`Rp`/currency, percent, target vs actual, variance), computes executive KPIs & insights, and inserts 100% native editable charts (`bar`/`line`, sorted `hbar`, `donut` ≤ 6 categories via `server/dataviz.js` with responsive A4/split geometry and 60-30-10 tonal palettes). Upgraded `buildAdminReportDoc()` and `import_xlsx { create_report: true }` (`buildReportFromSheets()`) with dynamic editorial covers (signal stripes + dark Hero KPI Bento), 62/38 Split Visual Insight pages with automatic insight cards, and characterful paginated data tables with tabular right-aligned numbers, positive/negative variance cues, prominent summary total rows, and automatic WCAG AA text contrast across lenses and Brand Kits.
+- **Standalone Local Chat (BYOK / Ollama):** added a zero-dependency local agent loop (`server/chat.js`, `POST /api/chat` SSE streaming, `GET/POST /api/chat/config`) supporting any OpenAI-compatible `/chat/completions` provider (**Ollama Lokal**, **OpenRouter**, **OpenAI**, or **Custom URL**) with direct tool calling across all 23 `kanvas_*` tools and workspace attachment uploads (`.pdf`, `.xlsx`, `.csv`, `.png`, `.jpg`, `.svg`).
+- **Floating Prompt Bar & Progress Drawer:** added a clean floating bottom prompt bar with `+` file attachments, 3 contextual starter chips, 1-click BYOK/Ollama setup modal, and a collapsible human-friendly Agent Progress Drawer. Automatically hidden inside **Hermes Desktop** (only shown in standalone mode or hosts implementing the cloud-ready `host.chat` contract).
+- **Security & UI polish:** isolated `<workspace>/_llm.json` from workspace file APIs and never returns or logs raw API keys (`hasApiKey` + masked preview only). Polished Home screen and toolbar visual hierarchy while keeping all shortcuts, layer locks, PDF Patch, and unified PDF/Excel import intact.
+
 ## [0.4.2]
 
 - **`npx` fix:** publishes both `kanvas` and `kanvas-studio` bin aliases, so `npx -y kanvas-studio mcp` resolves an executable instead of failing with "could not determine executable to run".

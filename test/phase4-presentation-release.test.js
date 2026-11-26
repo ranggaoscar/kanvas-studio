@@ -73,10 +73,12 @@ test('real Poppler rasterizes a rotated mixed-size PDF into locked PNG backgroun
   assert.equal(meta.needsVisionFallback, true)
 })
 
-test('v0.4.2 manifests, MCP version and schema, and skill budgets', t => {
+test('v0.5.0 manifests, MCP version and schema, and skill budgets', t => {
   const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8')
-  for (const path of ['package.json', 'plugin.json']) assert.equal(JSON.parse(read(path)).version, '0.4.2')
-  const skillChars = [...read('skills/kanvas-studio/SKILL.md')].length
+  for (const path of ['package.json', 'plugin.json']) assert.equal(JSON.parse(read(path)).version, '0.5.0')
+  const skill = read('skills/kanvas-studio/SKILL.md')
+  assert.match(skill, /version:\s*"0\.5\.0"/)
+  const skillChars = [...skill].length
   assert.ok(skillChars < 3500)
   const call = (id, method) => JSON.stringify({ jsonrpc: '2.0', id, method })
   const home = mkdtempSync(join(process.env.TMPDIR || tmpdir(), 'kanvas-release-'))
@@ -85,7 +87,7 @@ test('v0.4.2 manifests, MCP version and schema, and skill budgets', t => {
       encoding: 'utf8', env: { ...envMinimal(), KANVAS_HOME: home, KANVAS_NO_OPEN: '1' }, timeout: 15000,
       input: call(1, 'initialize') + '\n' + call(2, 'tools/list') + '\n'
     }).trim().split('\n').map(line => JSON.parse(line).result)
-    assert.equal(out[0].serverInfo.version, '0.4.2')
+    assert.equal(out[0].serverInfo.version, '0.5.0')
     assert.equal(out[1].tools.length, 23)
     const chars = [...JSON.stringify(out[1])].length
     assert.ok(chars < 10000)

@@ -32,7 +32,9 @@ function resetStore() {
     zoom: 0.4, pan: { x: 60, y: 60 }, tool: 'pilih', undo: [], redo: [], lastSnap: 0,
     dirty: false, saving: false, lastMtime: 0, status: '', fase: 'muat', pesan: '',
     img: {}, menu: null, modal: null, present: null, guides: [], ikuti: true, skala: 2, panelKiri: false, panelKanan: true,
-    tema: 'terang', documentBusy: false, robot: true, bot: null, sorot: new Set(), propAb: false, film: true, fokus: false
+    tema: 'terang', documentBusy: false, robot: true, bot: null, sorot: new Set(), propAb: false, film: true, fokus: false,
+    chatConfig: null, chatConfigLoaded: false, chatBusy: false, chatDrawerOpen: false, chatDrawerMin: false,
+    chatLog: [], chatHistory: [], chatAbort: null, chatDraft: '', chatAttachments: []
   })
 }
 resetStore()
@@ -768,11 +770,13 @@ function fitKotak(x, y, w, h, coba = 0) {
   if (!ukuranView().w || !ukuranView().h) { if (coba < 40) setTimeout(() => fitKotak(x, y, w, h, coba + 1), 50); return }
   // sisakan ruang untuk panel melayang yang sedang terbuka
   const v = ukuranView(), m = 40
-  const panel = !S.fokus
-  const kiri = panel && S.panelKiri ? 240 : 0, kanan = panel && (S.sel.length || S.propAb) ? 276 : 0, bawah = panel && S.film ? 96 : 0
-  const lw = v.w - kiri - kanan - m * 2, lh = v.h - bawah - m * 2
+  const panel = !S.fokus, hasChat = !!aktifChatHost()
+  const kiri = panel && S.panelKiri ? 240 : 0, kanan = panel && (S.sel.length || S.propAb) ? 276 : 0
+  const atas = panel && hasChat && S.film ? 74 : 0
+  const bawah = panel ? (hasChat ? 124 : S.film ? 96 : 0) : 0
+  const lw = Math.max(120, v.w - kiri - kanan - m * 2), lh = Math.max(120, v.h - atas - bawah - m * 2)
   S.zoom = Math.max(0.03, Math.min(4, Math.min(lw / w, lh / h)))
-  S.pan = { x: kiri + m + (lw - w * S.zoom) / 2 - x * S.zoom, y: m + (lh - h * S.zoom) / 2 - y * S.zoom }
+  S.pan = { x: kiri + m + (lw - w * S.zoom) / 2 - x * S.zoom, y: atas + m + (lh - h * S.zoom) / 2 - y * S.zoom }
   emit()
 }
 function fitAb(ab) { if (ab) fitKotak(ab.x, ab.y, ab.w, ab.h) }
@@ -1260,6 +1264,10 @@ function TombolStatus() {
 async function mintaAgentBaru(brief, style = '', brandId = '') {
   const styleLine = style && style !== 'auto' ? `\nPreferred Art Direction: ${style}` : ''
   const brandLine = brandId ? `\nActive Brand Kit: ${brandId} (load via kanvas_brand)` : ''
+  if (aktifChatHost()) {
+    const prompt = `${brief}${styleLine}${brandLine}`.trim()
+    return kirimChatLokal({ prompt })
+  }
   const teks = `[Kanvas Studio] New design from the brief below.\nUse the kanvas_* MCP tools: call kanvas_status, kanvas_brand (if a brand applies), and kanvas_art_direction to plan contextual aesthetics and grid without rigid recipes. Then build with kanvas_create / kanvas_campaign / kanvas_presentation / kanvas_edit / kanvas_dataviz in visible steps, and run kanvas_view (Visual QA) before finishing.${styleLine}${brandLine}\n\nBrief: ${brief}`
   const ok = await host.composer.insertText(null, teks, { mode: 'block' })
   if (ok) {
@@ -1653,6 +1661,457 @@ function bukaModalBrand(editBrand) {
   S.modal = { judul: editBrand ? `Edit Brand · ${editBrand.name}` : 'New Brand Kit', konten: h(FormBrand), tanpaAksi: true }
   emit()
 }
+
+/* =============== 7c. FLOATING PROMPT BAR (BYOK / CLOUD HOST CONTRACT) =============== */
+// Cloud-ready host.chat contract:
+// - Hidden automatically on Hermes Desktop (where @hermes/plugin-sdk has no host.chat).
+// - Active on Standalone browser (app/main.js sets host.chat) or any host providing host.chat / ctx.chat.
+// - Supports optional host.chat.renderSlot() (e.g. cloud credit counter), getConfig/saveConfig, openSettings, starterChips.
+function aktifChatHost() {
+  const c = S.ctx?.chat !== undefined ? S.ctx.chat : host.chat
+  return typeof c === 'function' ? c : null
+}
+
+const BYOK_PRESETS_DEFAULT = [
+  { id: 'ollama', label: 'Ollama Lokal', baseUrl: 'http://localhost:11434/v1', defaultModel: 'qwen2.5:14b', requiresKey: false, hint: 'Gratis & lokal di perangkat Anda' },
+  { id: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'anthropic/claude-3.5-sonnet', requiresKey: true, hint: 'Satu key untuk Claude, GPT, Gemini' },
+  { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o', requiresKey: true, hint: 'API resmi OpenAI' },
+  { id: 'custom', label: 'Custom URL', baseUrl: '', defaultModel: '', requiresKey: false, hint: 'LM Studio, vLLM, Groq, dll.' }
+]
+
+const LABEL_ALAT_CHAT = {
+  kanvas_guide: 'Membaca panduan desain…',
+  kanvas_status: 'Memeriksa ruang kerja…',
+  kanvas_art_direction: 'Merancang arahan visual…',
+  kanvas_brand: 'Menyelaraskan Brand Kit…',
+  kanvas_create: 'Membuat kanvas baru…',
+  kanvas_read: 'Membaca struktur kanvas…',
+  kanvas_edit: 'Menyusun layout & elemen…',
+  kanvas_resize: 'Menyesuaikan ukuran kanvas…',
+  kanvas_campaign: 'Menyiapkan materi kampanye…',
+  kanvas_dataviz: 'Membuat grafik & tabel data…',
+  kanvas_presentation: 'Menyusun slide presentasi…',
+  kanvas_to_code: 'Menghasilkan kode frontend…',
+  kanvas_assets: 'Mengelola pustaka aset…',
+  kanvas_community: 'Mengakses template komunitas…',
+  kanvas_view: 'Memeriksa kualitas visual…',
+  kanvas_document: 'Membaca dokumen…',
+  kanvas_export: 'Mengekspor hasil desain…',
+  kanvas_templates: 'Mencari template siap pakai…',
+  kanvas_comments: 'Membaca pin komentar…',
+  kanvas_resolve_comment: 'Menyelesaikan pin komentar…',
+  kanvas_icons: 'Mencari ikon vektor…',
+  kanvas_import_image: 'Mengimpor gambar ke kanvas…',
+  kanvas_open: 'Menyiapkan pratinjau studio…'
+}
+const labelAlatRamah = (name, explicit) => explicit || LABEL_ALAT_CHAT[name] || 'Memproses desain…'
+const formatUkuranFile = b => !b ? '' : b < 1024 ? b + ' B' : b < 1024 * 1024 ? Math.round(b / 1024) + ' KB' : (b / (1024 * 1024)).toFixed(1) + ' MB'
+const ikonLampiran = name => /\.pdf$/i.test(name) ? '📄' : /\.(xlsx|csv)$/i.test(name) ? '📊' : '🖼'
+
+async function muatChatConfig(paksa = false) {
+  const chat = aktifChatHost()
+  if (!chat || typeof chat.getConfig !== 'function') return null
+  if (S.chatConfigLoaded && !paksa) return S.chatConfig
+  try {
+    const r = await chat.getConfig()
+    if (r?.ok) { S.chatConfig = r; S.chatConfigLoaded = true; emit(); return r }
+  } catch {}
+  return S.chatConfig
+}
+
+function starterChipsKontekstual(chat) {
+  if (Array.isArray(chat?.starterChips) && chat.starterChips.length) return chat.starterChips.slice(0, 3)
+  if (halamanQuickEdit(abAktif())) {
+    return [
+      { label: 'Tambal teks di PDF ini', prompt: 'Bantu periksa halaman PDF Quick Edit ini dan arahkan teks mana yang bisa diperbarui tanpa mengubah desain aslinya.' },
+      { label: 'Buat ringkasan A4', prompt: 'Buat halaman laporan A4 ringkas dari isi dokumen ini dengan struktur rapi, lalu cek kualitas visualnya.' },
+      { label: 'Ekspor data ke Excel', prompt: 'Ekstrak data tabel dari dokumen ini ke file Excel (.xlsx) di ruang kerja.' }
+    ]
+  }
+  return [
+    { label: 'Buat laporan A4 dari Excel', prompt: 'Buat laporan A4 dari Excel yang saya lampirkan dengan ringkasan metrik dan tabel rapi, lalu periksa kualitas visualnya.' },
+    { label: 'Edit PDF tanpa ubah desain', prompt: 'Impor PDF yang saya lampirkan dalam mode Quick Edit agar latar desain asli tetap utuh dan siap ditambal teks.' },
+    { label: 'Buat deck 5 slide', prompt: 'Buat deck 5 slide presentasi modern lengkap dengan cover, metrik utama, grafik pertumbuhan, tabel perbandingan, dan penutup.' }
+  ]
+}
+
+function tambahLampiranChat(fileList) {
+  const okExt = /\.(pdf|xlsx|csv|png|jpe?g|svg)$/i
+  const next = [...(S.chatAttachments || [])]
+  let ditolak = 0
+  for (const f of Array.from(fileList || [])) {
+    if (!okExt.test(f.name)) { ditolak++; continue }
+    if (f.size > 32 * 1024 * 1024) { host.notify({ kind: 'info', message: `File "${f.name}" melebihi batas 32 MiB.` }); continue }
+    if (next.length >= 6) { host.notify({ kind: 'info', message: 'Maksimal 6 file lampiran per pesan.' }); break }
+    next.push({ id: uid('att'), file: f, name: f.name, size: f.size })
+  }
+  if (ditolak) host.notify({ kind: 'info', message: 'Format yang didukung: PDF, XLSX, CSV, PNG, JPG, atau SVG.' })
+  S.chatAttachments = next
+  emit()
+}
+
+function hapusLampiranChat(id) {
+  S.chatAttachments = (S.chatAttachments || []).filter(x => x.id !== id)
+  emit()
+}
+
+async function muatUlangFileDariChat(file) {
+  if (!file || !S.folder) return
+  await muatDaftar()
+  if (file !== S.file || S.fase !== 'siap') {
+    if (S.files.includes(file)) await buka(file)
+    return
+  }
+  const r = await S.ctx.files.readText(S.folder.id, file)
+  if (!r.ok) return
+  let d; try { d = normalisasi(JSON.parse(r.text)) } catch { return }
+  const lamaDoc = S.doc, lamaAb = S.doc?.artboards.length || 0
+  snap()
+  S.doc = d; S.lastMtime = r.mtimeMs || Date.now(); bersihSel()
+  if (lamaDoc) jalankanBot(bedaDoc(lamaDoc, d))
+  for (const k of Object.keys(S.img)) if (S.img[k].status === 'gagal') delete S.img[k]
+  S.status = 'Diperbarui AI · ' + new Date().toLocaleTimeString()
+  if (S.ikuti && d.artboards.length > lamaAb) { S.ab = d.artboards.at(-1).id; setTimeout(() => fitAb(abAktif()), 30) }
+  emit()
+}
+
+function hentikanChatLokal() {
+  if (S.chatAbort) { try { S.chatAbort.abort() } catch {} }
+}
+
+async function kirimChatLokal({ prompt = '', attachments } = {}) {
+  const chat = aktifChatHost()
+  if (!chat || S.chatBusy) return false
+  const teks = String(prompt ?? S.chatDraft ?? '').trim()
+  const lampiran = attachments !== undefined ? attachments : (S.chatAttachments || [])
+  if (!teks && !lampiran.length) return false
+
+  if (typeof chat.getConfig === 'function') {
+    await muatChatConfig()
+    if (!S.chatConfig?.configured) {
+      bukaModalByok({
+        notice: 'Atur Ollama lokal atau API key BYOK dulu untuk mulai chat langsung di browser — atau hubungkan lewat MCP (Claude Code / Cursor / Hermes).',
+        pendingPrompt: teks
+      })
+      return false
+    }
+  }
+
+  if (S.dirty) await simpanSekarang()
+  const ac = new AbortController()
+  S.chatAbort = ac
+  S.chatBusy = true
+  S.agenSibuk = true
+  S.chatDrawerOpen = true
+  S.chatDrawerMin = false
+  if (prompt === '' || prompt === S.chatDraft) S.chatDraft = ''
+  if (attachments === undefined) S.chatAttachments = []
+
+  const userEntry = { id: uid('cu'), kind: 'user', text: teks || 'Proses file lampiran ke kanvas', attachments: lampiran.map(a => a.name) }
+  const thinkId = uid('ck')
+  S.chatLog = [...S.chatLog.slice(-40), userEntry, { id: thinkId, kind: 'thinking', text: 'Menghubungi agen desain…' }]
+  emit()
+
+  const buangThinking = () => { S.chatLog = S.chatLog.filter(x => x.kind !== 'thinking') }
+  let updatedCanvas = null
+
+  try {
+    await chat({
+      prompt: teks,
+      attachments: lampiran,
+      file: S.file,
+      artboard: S.ab,
+      selection: S.sel,
+      history: S.chatHistory.slice(-10),
+      signal: ac.signal,
+      onEvent: ev => {
+        if (!ev) return
+        if (ev.type === 'thinking') {
+          const cur = S.chatLog.find(x => x.kind === 'thinking')
+          if (cur) cur.text = ev.message || 'Menyusun rencana desain…'
+          else S.chatLog = [...S.chatLog, { id: uid('ck'), kind: 'thinking', text: ev.message || 'Menyusun rencana desain…' }]
+          emit()
+        } else if (ev.type === 'tool_call') {
+          buangThinking()
+          S.chatLog = [...S.chatLog, { id: uid('ct'), kind: 'tool', toolId: ev.id, name: ev.name, label: labelAlatRamah(ev.name, ev.label), status: 'running', summary: '' }]
+          emit()
+        } else if (ev.type === 'tool_result') {
+          const item = [...S.chatLog].reverse().find(x => x.kind === 'tool' && (x.toolId === ev.id || (x.name === ev.name && x.status === 'running')))
+          if (item) { item.status = ev.ok === false ? 'error' : 'done'; item.summary = ev.summary || '' }
+          emit()
+        } else if (ev.type === 'canvas_updated') {
+          if (ev.file) { updatedCanvas = ev.file; muatUlangFileDariChat(ev.file).catch(() => {}) }
+        } else if (ev.type === 'done') {
+          buangThinking()
+          const replyText = ev.text || (ev.file ? `Selesai memperbarui ${ev.file}.` : 'Selesai.')
+          S.chatLog = [...S.chatLog, { id: uid('ca'), kind: 'assistant', text: replyText, file: ev.file || updatedCanvas }]
+          S.chatHistory = [...S.chatHistory.slice(-10), { role: 'user', content: teks || userEntry.text }, { role: 'assistant', content: replyText }]
+          if (updatedCanvas && ev.file && ev.file !== updatedCanvas) muatUlangFileDariChat(ev.file).catch(() => {})
+          emit()
+        } else if (ev.type === 'error') {
+          buangThinking()
+          S.chatLog = [...S.chatLog, { id: uid('ce'), kind: 'error', code: ev.code, text: ev.message || 'Gagal memproses permintaan.' }]
+          emit()
+          if (ev.code === 'not-configured') bukaModalByok({ notice: ev.message, pendingPrompt: teks })
+        }
+      }
+    })
+  } finally {
+    buangThinking()
+    S.chatBusy = false
+    S.chatAbort = null
+    S.agenSibuk = false
+    emit()
+  }
+  return true
+}
+
+function bukaModalByok({ notice = '', pendingPrompt = '' } = {}) {
+  const chat = aktifChatHost()
+  if (!chat) return
+  if (typeof chat.openSettings === 'function') { chat.openSettings(); return }
+  const initCfg = S.chatConfig || { provider: 'ollama', baseUrl: 'http://localhost:11434/v1', model: 'qwen2.5:14b', hasApiKey: false, apiKeyPreview: '', presets: BYOK_PRESETS_DEFAULT }
+  const presets = Array.isArray(initCfg.presets) && initCfg.presets.length ? initCfg.presets : BYOK_PRESETS_DEFAULT
+
+  function FormByok() {
+    const [provider, setProvider] = useState(initCfg.provider || 'ollama')
+    const [baseUrl, setBaseUrl] = useState(initCfg.baseUrl || 'http://localhost:11434/v1')
+    const [model, setModel] = useState(initCfg.model || 'qwen2.5:14b')
+    const [apiKey, setApiKey] = useState('')
+    const [hasKey, setHasKey] = useState(!!initCfg.hasApiKey)
+    const [preview, setPreview] = useState(initCfg.apiKeyPreview || '')
+    const [clearKey, setClearKey] = useState(false)
+    const [busy, setBusy] = useState(false)
+    const [err, setErr] = useState('')
+
+    useEffect(() => {
+      muatChatConfig(true).then(c => {
+        if (!c?.ok) return
+        setProvider(c.provider || 'ollama')
+        setBaseUrl(c.baseUrl || 'http://localhost:11434/v1')
+        setModel(c.model || (c.provider === 'ollama' ? 'qwen2.5:14b' : ''))
+        setHasKey(!!c.hasApiKey)
+        setPreview(c.apiKeyPreview || '')
+      })
+    }, [])
+
+    const pilihPreset = p => {
+      setProvider(p.id)
+      if (p.baseUrl) setBaseUrl(p.baseUrl)
+      if (p.defaultModel) setModel(p.defaultModel)
+      setErr('')
+    }
+
+    const aktifPreset = presets.find(p => p.id === provider) || presets[0]
+    const simpan = async () => {
+      if (!baseUrl.trim()) { setErr('Isi Base URL endpoint OpenAI-compatible atau pilih preset.'); return }
+      if (!model.trim()) { setErr('Isi nama model yang ingin digunakan.'); return }
+      if (aktifPreset?.requiresKey && !apiKey.trim() && (!hasKey || clearKey)) {
+        setErr(`Provider ${aktifPreset.label} memerlukan API key. Atau pilih Ollama Lokal tanpa API key.`)
+        return
+      }
+      setBusy(true); setErr('')
+      try {
+        const res = await chat.saveConfig({
+          provider,
+          baseUrl: baseUrl.trim(),
+          model: model.trim(),
+          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+          ...(clearKey ? { clearApiKey: true } : {})
+        })
+        if (!res?.ok) { setErr(res?.message || 'Gagal menyimpan pengaturan AI.'); setBusy(false); return }
+        S.chatConfig = res; S.chatConfigLoaded = true
+        if (pendingPrompt && !S.chatDraft) S.chatDraft = pendingPrompt
+        S.modal = null; emit()
+        host.notify({ kind: 'info', message: `AI siap (${aktifPreset?.label || provider} · ${res.model}) ✓` })
+      } catch (e) {
+        setErr(e?.message || 'Gagal menyimpan pengaturan.')
+      } finally { setBusy(false) }
+    }
+
+    const salinMcp = async () => {
+      const cmd = 'npx -y kanvas-studio mcp'
+      await S.ctx?.os?.writeClipboard?.(cmd)
+      host.notify({ kind: 'info', message: 'Perintah MCP disalin: ' + cmd })
+    }
+
+    return h('div', { className: 'kv-byok' },
+      notice ? h('div', { className: 'kv-byok-notice' }, notice) : null,
+      h('div', { className: 'kv-byok-presets', role: 'group', 'aria-label': 'Preset provider AI' },
+        presets.map(p => h('button', {
+          key: p.id, type: 'button',
+          className: 'kv-byok-preset' + (provider === p.id ? ' on' : ''),
+          onClick: () => pilihPreset(p)
+        }, h('b', null, p.label), h('span', null, p.hint || p.baseUrl || 'Endpoint bebas')))),
+      h('label', { className: 'kv-f' },
+        h('span', null, 'Base URL (OpenAI-compatible)'),
+        h('input', { value: baseUrl, placeholder: 'http://localhost:11434/v1', onChange: e => setBaseUrl(e.target.value) })),
+      h('label', { className: 'kv-f' },
+        h('span', null, 'Nama Model'),
+        h('input', { value: model, placeholder: aktifPreset?.defaultModel || 'qwen2.5:14b / gpt-4o', onChange: e => setModel(e.target.value) })),
+      h('label', { className: 'kv-f' },
+        h('span', null, 'API Key ', h('i', { className: 'kv-fhint' }, aktifPreset?.requiresKey ? '· wajib untuk provider ini' : '· opsional untuk Ollama / server lokal')),
+        h('input', {
+          type: 'password', value: apiKey, autoComplete: 'off',
+          placeholder: hasKey && !clearKey ? `Tersimpan (${preview || '••••'}) — kosongkan jika tidak diubah` : (aktifPreset?.requiresKey ? 'sk-...' : 'Kosongkan untuk Ollama lokal'),
+          onChange: e => { setApiKey(e.target.value); if (e.target.value) setClearKey(false) }
+        })),
+      hasKey && !clearKey ? h('div', { className: 'kv-byok-keyrow' },
+        h('span', null, `Key tersimpan lokal: ${preview || '••••'}`),
+        h('button', { type: 'button', className: 'kv-blink', onClick: () => { setClearKey(true); setApiKey('') } }, 'Hapus key')) : null,
+      err ? h('div', { className: 'kv-byok-err', role: 'alert' }, err) : null,
+      h('div', { className: 'kv-byok-guide' },
+        h('b', null, 'Tanpa API key? Tetap bisa langsung jalan!'),
+        h('p', null, 'Pilih Ollama Lokal (gratis & offline), atau hubungkan langsung Claude Code, Cursor, Codex, atau Hermes Desktop lewat MCP tanpa konfigurasi key di sini.'),
+        h('div', { className: 'kv-byok-mcp' },
+          h('code', null, 'npx -y kanvas-studio mcp'),
+          h('button', { type: 'button', onClick: salinMcp }, 'Salin MCP'))),
+      h('div', { className: 'kv-mact' },
+        h(Button, { variant: 'secondary', size: 'sm', onClick: () => { S.modal = null; emit() } }, 'Batal'),
+        h(Button, { size: 'sm', disabled: busy, onClick: simpan }, busy ? 'Menyimpan…' : 'Simpan Pengaturan')))
+  }
+
+  S.modal = { judul: 'Pengaturan AI Lokal (BYOK / Ollama)', konten: h(FormByok), tanpaAksi: true }
+  emit()
+}
+
+function AgentProgressDrawer() {
+  const chat = aktifChatHost()
+  const bodyRef = useRef(null)
+  useEffect(() => {
+    if (bodyRef.current && !S.chatDrawerMin) bodyRef.current.scrollTop = bodyRef.current.scrollHeight
+  }, [S.chatLog.length, S.chatBusy, S.chatDrawerMin])
+  if (!chat || (!S.chatDrawerOpen && !S.chatBusy) || !S.chatLog.length) return null
+
+  const toolSteps = S.chatLog.filter(x => x.kind === 'tool')
+  const runningTool = [...toolSteps].reverse().find(x => x.status === 'running')
+  const lastThink = [...S.chatLog].reverse().find(x => x.kind === 'thinking')
+  const lastErr = [...S.chatLog].reverse().find(x => x.kind === 'error')
+  const doneCount = toolSteps.filter(x => x.status === 'done').length
+  const statusText = S.chatBusy
+    ? (runningTool?.label || lastThink?.text || 'Agen sedang bekerja…')
+    : lastErr && S.chatLog.at(-1)?.kind === 'error'
+      ? 'Perlu perhatian'
+      : doneCount ? `Selesai · ${doneCount} langkah` : 'Respons agen'
+  const dotCls = S.chatBusy ? 'kerja' : (S.chatLog.at(-1)?.kind === 'error' ? 'err' : 'ok')
+
+  return h('aside', {
+    className: 'kv-drawer' + (S.chatDrawerMin ? ' min' : ''),
+    'aria-label': 'Progres Agen AI',
+    onPointerDown: e => e.stopPropagation()
+  },
+    h('div', { className: 'kv-drawer-head', onClick: () => { S.chatDrawerMin = !S.chatDrawerMin; emit() } },
+      h('i', { className: 'kv-drawer-dot ' + dotCls }),
+      h('span', { className: 'kv-drawer-title' }, statusText),
+      h('div', { className: 'kv-drawer-act', onClick: e => e.stopPropagation() },
+        h('button', { type: 'button', title: S.chatDrawerMin ? 'Perluas progres' : 'Perkecil progres', 'aria-label': S.chatDrawerMin ? 'Perluas progres' : 'Perkecil progres', onClick: () => { S.chatDrawerMin = !S.chatDrawerMin; emit() } }, S.chatDrawerMin ? '▴' : '▾'),
+        !S.chatBusy ? h('button', { type: 'button', title: 'Tutup progres', 'aria-label': 'Tutup progres', onClick: () => { S.chatDrawerOpen = false; emit() } }, '✕') : null)),
+    !S.chatDrawerMin ? h('div', { ref: bodyRef, className: 'kv-drawer-body' },
+      S.chatLog.map(item => {
+        if (item.kind === 'user') return h('div', { key: item.id, className: 'kv-dmsg kv-dmsg-user' },
+          h('span', null, item.text),
+          item.attachments?.length ? h('div', { className: 'kv-dmsg-atts' }, item.attachments.map((n, i) => h('em', { key: i }, ikonLampiran(n) + ' ' + n))) : null)
+        if (item.kind === 'thinking') return h('div', { key: item.id, className: 'kv-dstep running' }, h('i', { className: 'kv-dspin' }), h('span', null, item.text))
+        if (item.kind === 'tool') return h('div', { key: item.id, className: 'kv-dstep ' + item.status },
+          h('i', { className: item.status === 'running' ? 'kv-dspin' : 'kv-dcheck' }, item.status === 'done' ? '✓' : item.status === 'error' ? '!' : ''),
+          h('span', null, item.label))
+        if (item.kind === 'error') return h('div', { key: item.id, className: 'kv-dmsg kv-dmsg-err' }, item.text)
+        return h('div', { key: item.id, className: 'kv-dmsg kv-dmsg-ai' },
+          h('p', null, item.text),
+          item.file && item.file !== S.file ? h('button', { type: 'button', className: 'kv-dopen', onClick: () => buka(item.file) }, 'Buka ' + item.file) : null)
+      })) : null)
+}
+
+function FloatingPromptBar() {
+  const chat = aktifChatHost()
+  const fileRef = useRef(null), taRef = useRef(null)
+  const [drag, setDrag] = useState(false)
+  if (!chat) return null
+
+  const chips = starterChipsKontekstual(chat)
+  const showChips = !S.chatBusy && !S.chatLog.length && !S.chatDraft.trim() && !(S.chatAttachments || []).length
+  const cfg = S.chatConfig
+  const hasSettings = typeof chat.getConfig === 'function' || typeof chat.openSettings === 'function'
+  const settingsTitle = cfg?.configured
+    ? `Pengaturan AI · ${cfg.provider} (${cfg.model})`
+    : 'Pengaturan AI (BYOK / Ollama) — belum diatur'
+
+  const autoResize = el => {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(108, Math.max(24, el.scrollHeight)) + 'px'
+  }
+  const pilihChip = prompt => {
+    S.chatDraft = prompt; emit()
+    setTimeout(() => { if (taRef.current) { taRef.current.focus(); autoResize(taRef.current) } }, 20)
+  }
+  const kirim = () => {
+    if (S.chatBusy) return
+    if (!S.chatDraft.trim() && !(S.chatAttachments || []).length) return
+    kirimChatLokal({ prompt: S.chatDraft })
+    setTimeout(() => autoResize(taRef.current), 20)
+  }
+
+  return h('div', {
+    className: 'kv-promptwrap',
+    'data-testid': 'floating-prompt-bar',
+    onPointerDown: e => e.stopPropagation()
+  },
+    showChips ? h('div', { className: 'kv-pb-chips', role: 'list', 'aria-label': 'Contoh prompt cepat' },
+      chips.map(c => h('button', { key: c.label, type: 'button', className: 'kv-pb-chip', onClick: () => pilihChip(c.prompt) }, c.label))) : null,
+    h('div', {
+      className: 'kv-promptbar' + (drag ? ' drag' : '') + (S.chatBusy ? ' busy' : ''),
+      onDragOver: e => { e.preventDefault(); setDrag(true) },
+      onDragLeave: e => { if (!e.currentTarget.contains(e.relatedTarget)) setDrag(false) },
+      onDrop: e => { e.preventDefault(); setDrag(false); tambahLampiranChat(e.dataTransfer.files) }
+    },
+      (S.chatAttachments || []).length ? h('div', { className: 'kv-pb-atts' },
+        S.chatAttachments.map(a => h('span', { key: a.id, className: 'kv-pb-pill' },
+          h('i', null, ikonLampiran(a.name)),
+          h('b', { title: a.name }, a.name),
+          a.size ? h('em', null, formatUkuranFile(a.size)) : null,
+          h('button', { type: 'button', 'aria-label': 'Hapus lampiran ' + a.name, onClick: () => hapusLampiranChat(a.id) }, '×')))) : null,
+      h('div', { className: 'kv-pb-row' },
+        h('input', {
+          ref: fileRef, type: 'file', hidden: true, multiple: true,
+          accept: '.pdf,.xlsx,.csv,.png,.jpg,.jpeg,.svg',
+          'aria-label': 'Lampirkan PDF, Excel, CSV, atau gambar',
+          onChange: e => { tambahLampiranChat(e.target.files); e.target.value = '' }
+        }),
+        h('button', {
+          type: 'button', className: 'kv-pb-add',
+          title: 'Lampirkan PDF, Excel, CSV, atau gambar',
+          'aria-label': 'Lampirkan file',
+          disabled: S.chatBusy,
+          onClick: () => fileRef.current?.click()
+        }, '+'),
+        h('textarea', {
+          ref: taRef, rows: 1, className: 'kv-pb-input',
+          value: S.chatDraft,
+          disabled: S.chatBusy,
+          placeholder: S.chatBusy ? 'Agen AI sedang bekerja…' : 'Minta AI desain, edit, atau impor…',
+          onChange: e => { S.chatDraft = e.target.value; autoResize(e.target); emit() },
+          onKeyDown: e => {
+            e.stopPropagation()
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); kirim() }
+          }
+        }),
+        typeof chat.renderSlot === 'function' ? h('div', { className: 'kv-pb-slot' }, chat.renderSlot()) : null,
+        hasSettings ? h('button', {
+          type: 'button', className: 'kv-pb-cfg' + (cfg?.configured ? ' ready' : ''),
+          title: settingsTitle,
+          'aria-label': 'Pengaturan AI',
+          onClick: () => bukaModalByok()
+        }, '⚙', h('i', { className: 'kv-pb-dot' })) : null,
+        S.chatBusy
+          ? h('button', { type: 'button', className: 'kv-pb-send stop', title: 'Hentikan agen', 'aria-label': 'Hentikan agen', onClick: hentikanChatLokal }, '■')
+          : h('button', {
+            type: 'button', className: 'kv-pb-send',
+            title: 'Kirim (Enter)', 'aria-label': 'Kirim prompt',
+            disabled: !S.chatDraft.trim() && !(S.chatAttachments || []).length,
+            onClick: kirim
+          }, '↑'))))
+}
 /* =============== 8. KOMPONEN TAMPILAN =============== */
 function ElView({ el }) {
   const w = el.w || 100, hh = tinggi(el)
@@ -1966,6 +2425,7 @@ async function kirimKomentar() {
   const daftar = komentarTerbuka(); if (!daftar.length) return
   const baris = daftar.map((k, i) => { const ab = abById(k.artboard), el = labelElemen(k.elemen); return `${i + 1}. [${ab?.nama || k.artboard}${el ? ', ' + el : ''}] ${k.teks}` }).join('\n')
   const teks = `[Kanvas Studio] Please address the ${daftar.length} open comment${daftar.length > 1 ? 's' : ''} on ${S.file}.\nUse kanvas_comments to read them with element ids and positions, edit the design, then kanvas_resolve_comment with a short reply for each.\n\n${baris}`
+  if (aktifChatHost() && S.chatConfig?.configured) { S.menu = null; emit(); return kirimChatLokal({ prompt: teks }) }
   const ok = await host.composer.insertText(null, teks, { mode: 'block' })
   if (ok) { host.composer.submit?.(null, teks) || host.composer.focus(null); S.sesiAgent = host.state?.focusedSessionId?.get?.() || 'tunggu'; S.ctx.storage.set('sesiAgent', S.sesiAgent) }
   else if (await S.ctx.os.writeClipboard(teks)) {
@@ -2289,6 +2749,7 @@ function MenuQa({ qa }) {
     S.menu = null; emit()
     const items = [...qa.masalah.map(x => '- [ISSUE] ' + x), ...qa.saran.slice(0, 6).map(x => '- [SUGGESTION] ' + x)].join('\n')
     const teks = `[Kanvas Studio] Please fix these Visual QA findings in ${S.file || 'the active design'} (current QA score: ${qa.skor}/100) using kanvas_edit, then verify with kanvas_view:\n${items}`
+    if (aktifChatHost() && S.chatConfig?.configured) return kirimChatLokal({ prompt: teks })
     const ok = await host.composer.insertText(null, teks, { mode: 'block' })
     if (ok) host.composer.submit?.(null, teks) || host.composer.focus(null)
     else { await S.ctx.os.writeClipboard(teks); host.notify({ kind: 'info', message: 'QA checklist copied to clipboard for your agent.' }) }
@@ -2455,28 +2916,53 @@ function ImporDokumen() {
 }
 function Mulai() {
   const [brief, setBrief] = useState(''), [judul, setJudul] = useState(''), [gaya, setGaya] = useState('auto')
-  useEffect(() => { muatFont('Bricolage Grotesque', 800); muatTemplate(); muatBrand(); muatAset() }, [])
+  useEffect(() => { muatFont('Bricolage Grotesque', 800); muatTemplate(); muatBrand(); muatAset(); muatChatConfig() }, [])
   useEffect(() => { muatTerakhir(); muatBrand(); muatAset() }, [S.files.join('|'), S.folder?.id])
-  const brands = daftarBrand(), defBr = S.brands?.defaultId
+  const brands = daftarBrand(), defBr = S.brands?.defaultId, chat = aktifChatHost(), cfg = S.chatConfig
   const kirim = () => { if (brief.trim()) mintaAgentBaru(brief.trim(), gaya, defBr || '') }
   const terakhir = (TERAKHIR.daftar || []).filter(x => S.files.includes(x.f))
   for (const x of terakhir) terapkanTata(x.doc)   // auto-layout pratinjau dihitung di browser
   return h('div', { className: 'kv-start' },
     h('section', { className: 'kv-panggung' },
       h('div', { className: 'kv-panggung-kiri' },
-        h('div', { className: 'kv-merek kv-merek-mode' }, h(Logo), h('span', null, 'Kanvas Studio'), h(PilihRuang)),
-        h(ImporDokumen),
-        h('h1', null, 'Design anything.', h('br'), 'Your agent draws it.'),
-        h('p', null, 'Adaptive Design Intelligence, multi-brand Brand Kits, native charts & decks (.pptx), Smart Resize, and Visual QA — 100% free, open-source, and local-first.'),
+        h('div', { className: 'kv-merek kv-merek-mode' },
+          h(Logo), h('span', null, 'Kanvas Studio'), h(PilihRuang),
+          chat ? h('div', { className: 'kv-home-ai' },
+            typeof chat.renderSlot === 'function' ? h('span', { className: 'kv-pb-slot' }, chat.renderSlot()) : null,
+            (typeof chat.getConfig === 'function' || typeof chat.openSettings === 'function')
+              ? h('button', {
+                type: 'button', className: 'kv-home-cfg' + (cfg?.configured ? ' ready' : ''),
+                title: 'Pengaturan AI Lokal (BYOK / Ollama)',
+                onClick: () => bukaModalByok()
+              }, h('i', { className: 'kv-pb-dot' }), cfg?.configured ? `⚙ ${cfg.model || cfg.provider}` : '⚙ Pengaturan AI')
+              : null) : null),
+        h('div', { className: 'kv-hero-copy' },
+          h('h1', null, 'Design anything.', h('br'), 'Your agent draws it.'),
+          h('p', null, 'Adaptive Design Intelligence, multi-brand Brand Kits, native charts & decks (.pptx), Smart Resize, and Visual QA — 100% free, open-source, and local-first.')),
         h('div', { className: 'kv-brief' },
           h('textarea', { rows: 2, value: brief, placeholder: 'For example: a Swiss editorial A4 exhibition poster, or a 6-slide Q4 investor deck with bar chart', onChange: e => setBrief(e.target.value),
             onKeyDown: e => { e.stopPropagation(); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); kirim() } } }),
-          h('button', { className: 'kv-brief-kirim', disabled: !brief.trim(), onClick: kirim }, 'Send to agent')),
+          h('button', { className: 'kv-brief-kirim', disabled: !brief.trim() || S.chatBusy, onClick: kirim }, S.chatBusy ? 'Working…' : 'Send to agent')),
         h('div', { className: 'kv-gaya-bar' },
           h('span', null, 'Art direction:'),
           GAYA_ARAH.map(([k, l]) => h('button', { key: k, className: gaya === k ? 'on' : '', onClick: () => setGaya(k) }, l))),
-        h('div', { className: 'kv-chips' }, BRIEF_CEPAT.map(([l, b]) => h('button', { key: l, onClick: () => setBrief(b) }, l)))),
+        h('div', { className: 'kv-chips' }, BRIEF_CEPAT.map(([l, b]) => h('button', { key: l, onClick: () => setBrief(b) }, l))),
+        h(ImporDokumen)),
       h(DemoAgen)),
+    terakhir.length ? h('section', { className: 'kv-bag' },
+      h('div', { className: 'kv-bag-head' }, h('h2', null, 'Continue'), h('span', { className: 'kv-bag-sub' }, `${terakhir.length} recent design${terakhir.length > 1 ? 's' : ''}`)),
+      h('div', { className: 'kv-rak kv-rak-gulir' }, terakhir.map(x => h('button', { key: x.f, className: 'kv-karya', onClick: () => buka(x.f) },
+        h('div', { className: 'kv-karya-ab' }, h(Thumb, { ab: x.doc.artboards[0], lebar: muatKotak(x.doc.artboards[0], 200, 132) })),
+        h('b', null, x.doc.judul || x.f.replace(/\.kanvas\.json$/i, '')), h('span', null, `${x.doc.artboards.length > 1 ? x.doc.artboards.length + ' artboards, ' : ''}edited ${waktuLalu(x.mtime)}`))))) : null,
+    TPL.data?.length ? h('section', { className: 'kv-bag' },
+      h('div', { className: 'kv-bag-head' }, h('h2', null, 'Start from a template'), h('span', { className: 'kv-bag-sub' }, 'Ready-to-edit layouts')),
+      h('div', { className: 'kv-rak' }, TPL.data.map(t => {
+        terapkanTata(t)
+        const ab = t.artboards[0]
+        return h('button', { key: t.meta?.id, className: 'kv-karya', title: t.meta?.deskripsi, onClick: () => desainDariTemplate(t, judul || t.meta?.nama) },
+          h('div', { className: 'kv-karya-ab' }, h(Thumb, { ab, lebar: muatKotak(ab, 200, 132) })),
+          h('b', null, t.meta?.nama), h('span', null, t.artboards.length > 1 ? `${t.meta?.kategori}, ${t.artboards.length} slides` : t.meta?.kategori))
+      }))) : null,
     h('section', { className: 'kv-bag' },
       h('div', { className: 'kv-bag-head' }, h('h2', null, 'Brand Kits'), h('button', { className: 'kv-mini', onClick: () => bukaModalBrand(null) }, '+ New Brand Kit')),
       h('div', { className: 'kv-brgrid' },
@@ -2492,22 +2978,8 @@ function Mulai() {
               h('button', { className: 'kv-blink', onClick: () => bukaModalBrand(b) }, 'Edit')))
         }),
         h('button', { className: 'kv-bcard kv-badd', onClick: () => bukaModalBrand(null) }, h('b', null, '+ Add Brand Kit'), h('span', null, 'Save colors, fonts & art direction')))),
-    terakhir.length ? h('section', { className: 'kv-bag' },
-      h('h2', null, 'Continue'),
-      h('div', { className: 'kv-rak kv-rak-gulir' }, terakhir.map(x => h('button', { key: x.f, className: 'kv-karya', onClick: () => buka(x.f) },
-        h('div', { className: 'kv-karya-ab' }, h(Thumb, { ab: x.doc.artboards[0], lebar: muatKotak(x.doc.artboards[0], 200, 132) })),
-        h('b', null, x.doc.judul || x.f.replace(/\.kanvas\.json$/i, '')), h('span', null, `${x.doc.artboards.length > 1 ? x.doc.artboards.length + ' artboards, ' : ''}edited ${waktuLalu(x.mtime)}`))))) : null,
-    TPL.data?.length ? h('section', { className: 'kv-bag' },
-      h('h2', null, 'Start from a template'),
-      h('div', { className: 'kv-rak' }, TPL.data.map(t => {
-        terapkanTata(t)
-        const ab = t.artboards[0]
-        return h('button', { key: t.meta?.id, className: 'kv-karya', title: t.meta?.deskripsi, onClick: () => desainDariTemplate(t, judul || t.meta?.nama) },
-          h('div', { className: 'kv-karya-ab' }, h(Thumb, { ab, lebar: muatKotak(ab, 200, 132) })),
-          h('b', null, t.meta?.nama), h('span', null, t.artboards.length > 1 ? `${t.meta?.kategori}, ${t.artboards.length} slides` : t.meta?.kategori))
-      }))) : null,
     h('section', { className: 'kv-bag' },
-      h('h2', null, 'Blank canvas'),
+      h('div', { className: 'kv-bag-head' }, h('h2', null, 'Blank canvas'), h('span', { className: 'kv-bag-sub' }, 'Pick a preset size to start from scratch')),
       h('input', { className: 'kv-judul', placeholder: 'Design name (optional)', value: judul, onChange: e => setJudul(e.target.value) }),
       h('div', { className: 'kv-ukuran' }, GRUP_UKURAN.map(([g, nama]) => h('div', { key: g, className: 'kv-ukuran-grup' },
         h('span', null, g),
@@ -2515,13 +2987,14 @@ function Mulai() {
           h('i', { style: { width: muatKotak(p, 54, 54), height: Math.round(muatKotak(p, 54, 54) * p.h / p.w) } }),
           h('b', null, p.nama.replace(' Portrait', '')), h('span', null, `${p.w} × ${p.h}`)))))))),
     S.doc ? h('div', null, h(Button, { variant: 'secondary', size: 'sm', onClick: () => { S.fase = 'siap'; emit() } }, 'Back to design')) : null,
+    chat ? h(AgentProgressDrawer) : null,
     h('footer', { className: 'kv-homefoot' },
-      h('span', null, 'Kanvas Studio v0.3.0 · Free forever · MIT Open Source · Local first'),
+      h('span', null, 'Kanvas Studio v0.5.0 · Free forever · MIT Open Source · Local first'),
       h('a', { href: 'https://github.com/sponsors/ranggaoscar', target: '_blank', rel: 'noopener noreferrer' }, '♥ Support on GitHub')))
 }
 
 function KanvasApp({ diPane } = {}) {
-  useEffect(() => { KANVAS.terbuka++; muatBrand(); muatAset(); return () => { KANVAS.terbuka-- } }, [])
+  useEffect(() => { KANVAS.terbuka++; muatBrand(); muatAset(); muatChatConfig(); return () => { KANVAS.terbuka-- } }, [])
   useStore()
   const root = useRef(null)
   const kunci = e => {
@@ -2573,13 +3046,16 @@ function KanvasApp({ diPane } = {}) {
   else if (S.fase === 'pilih-file' || !S.doc) isi = h(Mulai)
   else {
     const props = S.panelKanan && (S.sel.length || S.propAb)
+    const hasChat = !!aktifChatHost()
     isi = h(Fragment, null, S.fokus ? null : h(Atas, { diPane }),
-      h('div', { className: 'kv-main' },
+      h('div', { className: 'kv-main' + (hasChat ? ' kv-has-chat' : '') + (props ? ' kv-r-open' : '') },
         h(Kanvas),
         h(AgentKursor), h(KomentarPopover),
         !S.fokus && S.panelKiri ? h(PanelKiri) : null,
         !S.fokus && props ? h('div', { className: 'kv-float kv-float-r' }, h('button', { className: 'kv-x kv-xr', title: 'Close panel', onClick: () => { S.sel = []; S.propAb = false; emit() } }, '✕'), h(PanelKanan)) : null,
         !S.fokus && S.film ? h(StripSlide) : null,
+        !S.fokus && hasChat ? h(FloatingPromptBar) : null,
+        !S.fokus && hasChat ? h(AgentProgressDrawer) : null,
         h('div', { className: 'kv-corner' },
           h('button', { className: S.panelKiri ? 'on' : '', title: 'Layers', onClick: () => { S.panelKiri = !S.panelKiri; emit() } }, '☰'),
           h('button', { className: S.film ? 'on' : '', title: 'Artboard strip', onClick: () => { S.film = !S.film; emit() } }, '▭'),
@@ -2983,6 +3459,132 @@ const CSS = `
 .kv-homefoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding-top:14px;border-top:1px solid var(--ui-stroke-secondary);font-size:11.5px;color:var(--ui-text-tertiary)}
 .kv-homefoot a{color:var(--kv-acc);text-decoration:none;font-weight:700}
 .kv-homefoot a:hover{text-decoration:underline}
+/* v0.5.0: Toolbar & Home hierarchy polish + Floating Prompt Bar, Progress Drawer & BYOK Setup */
+.kv-top{padding:8px 12px;gap:7px;background:var(--ui-bg-primary)}
+.kv-tools{border-radius:11px;padding:3px;gap:2px}
+.kv-ghost{transition:border-color .15s,background .15s}
+.kv-ghost:hover{background:var(--ui-bg-elevated)}
+.kv-hero-copy{display:flex;flex-direction:column;gap:8px}
+.kv-bag-sub{font-size:12px;color:var(--ui-text-tertiary);font-weight:500}
+.kv-impor{padding:9px 12px;border:1px dashed rgba(255,255,255,.22);border-radius:12px;background:rgba(255,255,255,.04);transition:background .15s,border-color .15s}
+.kv-impor.kv-drop{border-color:#FF8A6B;background:rgba(255,138,107,.12)}
+.kv-home-ai{display:flex;align-items:center;gap:6px;margin-left:auto}
+.kv-home-cfg{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#eef0fb;font:700 11.5px "Plus Jakarta Sans",system-ui;transition:background .15s,border-color .15s}
+.kv-home-cfg:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35)}
+.kv-home-cfg .kv-pb-dot{position:static;width:7px;height:7px}
+/* Filmstrip moves cleanly to top-center when Floating Prompt Bar is active */
+.kv-has-chat .kv-film{top:12px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);margin:0;max-width:calc(100% - 560px);padding:6px 8px;border-radius:14px}
+.kv-has-chat .kv-left.kv-float,.kv-has-chat .kv-float-r{bottom:92px}
+/* Floating Bottom Prompt Bar (pen.dev style) */
+.kv-promptwrap{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:21;width:min(620px,calc(100% - 480px));min-width:340px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.kv-promptwrap>*{pointer-events:auto}
+.kv-pb-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:100%}
+.kv-pb-chip{border:1px solid var(--ui-stroke-secondary);background:color-mix(in srgb,var(--ui-bg-primary) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--ui-text-secondary);border-radius:999px;padding:5px 12px;font:600 11.5px "Plus Jakarta Sans",system-ui;box-shadow:0 6px 18px rgba(16,22,52,.08);transition:transform .15s,border-color .15s,color .15s}
+.kv-pb-chip:hover{transform:translateY(-1px);border-color:var(--kv-acc);color:var(--ui-text-primary)}
+.kv-promptbar{width:100%;display:flex;flex-direction:column;gap:6px;padding:7px 8px;border-radius:20px;background:color-mix(in srgb,var(--ui-bg-primary) 94%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--ui-stroke-secondary);box-shadow:0 16px 44px rgba(16,22,52,.18),0 2px 8px rgba(16,22,52,.06);transition:border-color .2s,box-shadow .2s;box-sizing:border-box}
+.kv.kv-terang .kv-promptbar{background:rgba(255,255,255,.94)}
+.kv-promptbar:focus-within{border-color:var(--kv-acc);box-shadow:0 18px 48px rgba(16,22,52,.22),0 0 0 3px rgba(255,90,60,.14)}
+.kv-promptbar.drag{border-color:var(--kv-acc);background:color-mix(in srgb,var(--kv-acc) 6%,var(--ui-bg-primary))}
+.kv-pb-atts{display:flex;flex-wrap:wrap;gap:6px;padding:2px 4px 0}
+.kv-pb-pill{display:inline-flex;align-items:center;gap:5px;max-width:210px;padding:3px 6px 3px 8px;border-radius:999px;background:var(--ui-bg-elevated);border:1px solid var(--ui-stroke-secondary);font-size:11.5px}
+.kv-pb-pill i{font-style:normal;font-size:12px}
+.kv-pb-pill b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv-pb-pill em{font-style:normal;font-size:10px;color:var(--ui-text-tertiary);flex:none}
+.kv-pb-pill button{border:0;background:transparent;color:var(--ui-text-tertiary);width:18px;height:18px;border-radius:50%;display:grid;place-items:center;padding:0;font-size:13px;line-height:1}
+.kv-pb-pill button:hover{background:rgba(229,72,77,.14);color:#e5484d}
+.kv-pb-row{display:flex;align-items:flex-end;gap:6px}
+.kv-pb-add,.kv-pb-cfg,.kv-pb-send{flex:none;width:34px;height:34px;border-radius:12px;display:grid;place-items:center;padding:0;transition:background .15s,border-color .15s,transform .12s}
+.kv-pb-add{border:1px solid var(--ui-stroke-secondary);background:var(--ui-bg-elevated);color:var(--ui-text-primary);font-size:18px;font-weight:600;line-height:1}
+.kv-pb-add:hover:not(:disabled){border-color:var(--kv-acc);color:var(--kv-acc)}
+.kv-pb-add:disabled{opacity:.45;cursor:default}
+.kv-pb-input{flex:1;min-width:0;border:0;background:transparent;color:var(--ui-text-primary);font:13.5px/1.4 "Plus Jakarta Sans",system-ui,sans-serif;padding:7px 4px;margin:0;resize:none;outline:none;max-height:108px;min-height:24px;overflow-y:auto;scrollbar-width:none;box-sizing:border-box}
+.kv-pb-input::-webkit-scrollbar{display:none}
+.kv-pb-input::placeholder{color:var(--ui-text-tertiary)}
+.kv-pb-slot{display:inline-flex;align-items:center;flex:none}
+.kv-pb-cfg{position:relative;border:1px solid transparent;background:transparent;color:var(--ui-text-secondary);font-size:16px}
+.kv-pb-cfg:hover{background:var(--ui-bg-elevated);color:var(--ui-text-primary)}
+.kv-pb-dot{position:absolute;right:5px;top:5px;width:7px;height:7px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 1.5px var(--ui-bg-primary)}
+.kv-pb-cfg.ready .kv-pb-dot,.kv-home-cfg.ready .kv-pb-dot{background:#10b981}
+.kv-pb-send{border:0;background:var(--kv-grad);color:#fff!important;font-size:16px;font-weight:800;box-shadow:0 6px 16px -6px rgba(255,90,60,.7)}
+.kv-pb-send:hover:not(:disabled){transform:translateY(-1px)}
+.kv-pb-send:disabled{opacity:.38;box-shadow:none;cursor:default}
+.kv-pb-send.stop{background:#101634;box-shadow:none;font-size:12px}
+/* Floating Agent Progress Drawer */
+.kv-drawer{position:absolute;right:14px;bottom:14px;z-index:22;width:308px;max-width:calc(100% - 28px);display:flex;flex-direction:column;border-radius:16px;background:color-mix(in srgb,var(--ui-bg-primary) 94%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--ui-stroke-secondary);box-shadow:0 16px 42px rgba(16,22,52,.2);overflow:hidden}
+.kv.kv-terang .kv-drawer{background:rgba(255,255,255,.95)}
+.kv-start .kv-drawer{position:fixed;right:20px;bottom:20px}
+.kv-r-open .kv-drawer{right:276px}
+.kv-drawer-head{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;user-select:none;border-bottom:1px solid var(--ui-stroke-tertiary)}
+.kv-drawer.min .kv-drawer-head{border-bottom:0}
+.kv-drawer-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#10b981}
+.kv-drawer-dot.kerja{background:#FF4D3D;animation:kvdenyut 1s ease-in-out infinite}
+.kv-drawer-dot.err{background:#e5484d}
+.kv-drawer-title{flex:1;min-width:0;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv-drawer-act{display:flex;gap:2px}
+.kv-drawer-act button{border:0;background:transparent;color:var(--ui-text-tertiary);width:22px;height:22px;border-radius:6px;display:grid;place-items:center;padding:0;font-size:11px}
+.kv-drawer-act button:hover{background:var(--ui-bg-elevated);color:var(--ui-text-primary)}
+.kv-drawer-body{display:flex;flex-direction:column;gap:7px;padding:10px 11px;max-height:240px;overflow-y:auto;font-size:12px;line-height:1.45}
+.kv-dmsg{padding:7px 10px;border-radius:10px}
+.kv-dmsg p{margin:0;white-space:pre-wrap}
+.kv-dmsg-user{background:var(--ui-bg-elevated);border:1px solid var(--ui-stroke-tertiary);font-weight:600}
+.kv-dmsg-atts{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.kv-dmsg-atts em{font-style:normal;font-size:10.5px;padding:2px 6px;border-radius:6px;background:var(--ui-bg-primary);border:1px solid var(--ui-stroke-secondary);color:var(--ui-text-secondary)}
+.kv-dmsg-ai{background:color-mix(in srgb,#10b981 8%,var(--ui-bg-primary));border:1px solid color-mix(in srgb,#10b981 24%,transparent)}
+.kv-dmsg-err{background:rgba(229,72,77,.1);border:1px solid rgba(229,72,77,.28);color:#d92d34}
+.kv-dstep{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ui-text-secondary);padding:2px 4px}
+.kv-dstep.done{color:var(--ui-text-tertiary)}
+.kv-dstep.error{color:#d92d34}
+.kv-dspin{width:12px;height:12px;border-radius:50%;border:2px solid var(--ui-stroke-secondary);border-top-color:var(--kv-acc);animation:kvspin .8s linear infinite;flex:none}
+@keyframes kvspin{to{transform:rotate(360deg)}}
+.kv-dcheck{width:14px;height:14px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:9.5px;font-weight:800;background:rgba(16,185,129,.16);color:#059669;flex:none}
+.kv-dstep.error .kv-dcheck{background:rgba(229,72,77,.16);color:#d92d34}
+.kv-dopen{margin-top:6px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-bg-primary);border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700}
+.kv-dopen:hover{border-color:var(--kv-acc);color:var(--kv-acc)}
+/* Modal BYOK Setup */
+.kv-mbox{width:min(480px,calc(100% - 24px));max-height:calc(100% - 24px);overflow-y:auto}
+.kv-byok{display:flex;flex-direction:column;gap:10px}
+.kv-byok-notice{padding:9px 11px;border-radius:10px;background:rgba(255,90,60,.1);border:1px solid rgba(255,90,60,.28);color:var(--ui-text-primary);font-size:12px;line-height:1.45}
+.kv-byok-presets{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.kv-byok-preset{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 10px;border-radius:11px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-bg-primary);text-align:left;transition:border-color .15s,background .15s}
+.kv-byok-preset:hover{border-color:var(--kv-acc)}
+.kv-byok-preset.on{border-color:var(--kv-acc);background:color-mix(in srgb,var(--kv-acc) 9%,var(--ui-bg-primary));box-shadow:0 0 0 1px var(--kv-acc)}
+.kv-byok-preset b{font-size:12.5px}
+.kv-byok-preset span{font-size:10.5px;color:var(--ui-text-tertiary);line-height:1.3}
+.kv-byok-keyrow{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--ui-text-secondary);padding:0 2px}
+.kv-byok-err{padding:8px 10px;border-radius:9px;background:rgba(229,72,77,.12);border:1px solid rgba(229,72,77,.3);color:#d92d34;font-size:12px}
+.kv-byok-guide{padding:10px 11px;border-radius:11px;background:var(--ui-bg-primary);border:1px dashed var(--ui-stroke-secondary);display:flex;flex-direction:column;gap:5px}
+.kv-byok-guide b{font-size:12px!important}
+.kv-byok-guide p{font-size:11.5px;margin:0;color:var(--ui-text-secondary);line-height:1.45}
+.kv-byok-mcp{display:flex;align-items:center;gap:8px;margin-top:2px}
+.kv-byok-mcp code{flex:1;padding:5px 8px;border-radius:7px;background:var(--ui-bg-elevated);border:1px solid var(--ui-stroke-secondary);font:600 11px ui-monospace,SFMono-Regular,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv-byok-mcp button{flex:none;border:1px solid var(--ui-stroke-secondary);background:var(--ui-bg-elevated);border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700}
+.kv-byok-mcp button:hover{border-color:var(--kv-acc);color:var(--kv-acc)}
+/* Responsive layout for narrow tablets & mobile (390x844) */
+@container (max-width:1120px){
+  .kv-promptwrap{width:min(540px,calc(100% - 260px));min-width:280px}
+  .kv-drawer{bottom:96px;right:12px;width:296px}
+  .kv-r-open .kv-drawer{right:12px}
+}
+@container (max-width:720px){
+  .kv-start{padding:14px 14px 32px;gap:22px}
+  .kv-panggung{padding:20px 16px;border-radius:20px;gap:18px}
+  .kv-brief{flex-direction:column}
+  .kv-brief textarea{min-height:66px;scrollbar-width:none}
+  .kv-brief textarea::-webkit-scrollbar{display:none}
+  .kv-brief-kirim{height:38px}
+  .kv-has-chat .kv-corner{top:10px;bottom:auto;left:10px;padding:2px}
+  .kv-has-chat .kv-corner button{width:27px;height:26px;font-size:12px}
+  .kv-has-chat .kv-film{top:48px;left:10px;right:10px;transform:none;max-width:calc(100% - 20px);width:auto}
+  .kv-promptwrap{left:10px;right:10px;bottom:10px;transform:none;width:auto;min-width:0}
+  .kv-pb-input{font-size:12.5px}
+  .kv-pb-chips{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;width:100%;scrollbar-width:none;padding-bottom:2px}
+  .kv-pb-chip{flex:none;white-space:nowrap}
+  .kv-drawer{left:10px;right:10px;bottom:116px;width:auto;max-width:none}
+  .kv-drawer-body{max-height:165px}
+  .kv-byok-presets{grid-template-columns:1fr}
+  .kv-status{overflow-x:auto;white-space:nowrap;scrollbar-width:none;gap:8px}
+  .kv-status>*{flex:none}
+}
 `
 
 /* =============== 10. DAFTAR KE HERMES =============== */

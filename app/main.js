@@ -4,7 +4,7 @@
 import { createElement as h } from 'react'
 import { createRoot } from 'react-dom/client'
 import plugin, { engine } from '../desktop/plugin.js'
-import { host, createDocumentAction } from './host.js'
+import { host, createDocumentAction, createLocalChat } from './host.js'
 import { periksa } from './lint.js'
 
 const api = (jalur, body) => fetch('/api/' + jalur, {
@@ -83,6 +83,7 @@ if (window.KANVAS_RENDER) {
   // ---------------- mode studio ----------------
   const buka = new URLSearchParams(location.search).get('buka')
   if (buka) { ctx.storage.set('file', buka); history.replaceState(null, '', '/') }
+  host.chat = createLocalChat(api)
   ctx.storage.set('sesiAgent', 'agent')   // bar agent menyala saat agent (lewat MCP) sedang bekerja
   plugin.register(ctx)
   const pane = KONTRIB.find(c => c.id === 'pane')
