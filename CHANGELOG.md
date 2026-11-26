@@ -3,6 +3,13 @@
 All notable changes to **Kanvas Studio** are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0]
+
+- **Faster agent workflow:** smaller MCP schemas, `kanvas_guide` quick topics, partial `kanvas_read`, `fast_qa` and `qa_only`, and opt-in deterministic `auto_heal`.
+- **Design Taste:** structured blueprints across seven lenses, taste checks for text density, visual balance/focal point and palette/spacing, plus an A4 `admin-report` preset and starter template.
+- **Document Bridge:** `kanvas_document`, zero-npm-runtime-dependency XLSX I/O and CSV import, editable Hybrid PDF round-trip, and PDF Quick Edit with a locked background and single-line patch auto-fit. PDF and spreadsheets enter through the same Studio Home import.
+- **Smart Presentation:** untyped slides choose charts, diagrams, tables, KPI callouts, or editorial layouts based on structured content. External PDF Quick Edit uses Windows.Data.Pdf or optional local Poppler, including on Linux and macOS.
+
 ## [0.3.0] - 2026-11-25
 
 ### Added — P0, P1 & P2 Agent-Native Design Engine + Live Canvas UI Upgrade (Zero Runtime Dependencies)

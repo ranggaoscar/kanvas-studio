@@ -424,6 +424,29 @@ export function buildAdminReportDoc({
   return { doc, direction: ad.direction, preset: 'admin-report', pageCount: artboards.length, slideCount: artboards.length }
 }
 
+// Explicit layouts win. Infer only from structured content; never extract numbers from prose.
+const chartTypes = new Set(['bar', 'hbar', 'line', 'donut'])
+const numeric = n => typeof n === 'number' && Number.isFinite(n)
+export function chooseVisualType(slide = {}) {
+  const explicit = String(slide.type || '').trim().toLowerCase()
+  const chart = slide.chart || {}
+  const chartType = String(chart.type || '').trim().toLowerCase()
+  if (chartTypes.has(explicit)) return explicit
+  if (explicit && explicit !== 'chart') return explicit
+  if (chartTypes.has(chartType)) return chartType
+  const { data, series, labels } = chart
+  const points = Array.isArray(data) && data.length >= 2 && data.every(d => numeric(d?.value)) ? data : null
+  const ordered = Array.isArray(labels) && labels.length >= 2 && Array.isArray(series) && series.length > 0 &&
+    series.every(s => Array.isArray(s?.values) && s.values.length === labels.length && s.values.every(numeric))
+  if (ordered || (points && ['trend', 'time'].includes(chart.intent))) return 'line'
+  if (points && ['share', 'composition'].includes(chart.intent) && points.length <= 6 && points.every(d => d.value >= 0) && points.some(d => d.value > 0)) return 'donut'
+  if (points) return points.length > 5 || points.some(d => String(d.label ?? '').length > 16) ? 'hbar' : 'bar'
+  if (slide.table?.columns?.length && slide.table?.rows?.length) return 'table'
+  if ((slide.nodes || slide.steps)?.length) return 'diagram'
+  if (Array.isArray(slide.metrics) && slide.metrics.some(m => m?.label && m.value != null)) return 'stats'
+  return 'narrative'
+}
+
 export function buildPresentationDoc({
   judul = 'Presentation',
   subtitle = '',
@@ -467,7 +490,8 @@ export function buildPresentationDoc({
 
   slides.forEach((sl, idx) => {
     const pfx = `s${idx + 1}`
-    const type = String(sl.type || (idx === 0 ? 'cover' : 'narrative')).toLowerCase()
+    const visual = chooseVisualType(sl)
+    const type = chartTypes.has(visual) ? 'chart' : visual
     const els = []
     const contentTop = my + 16
     const bodyTop = my + 178
@@ -521,7 +545,7 @@ export function buildPresentationDoc({
       const hasNote = Boolean(sl.body || (Array.isArray(sl.bullets) && sl.bullets.length))
       const vizW = hasNote ? Math.round(cw * 0.68) : cw
       const vizTheme = { displayFont: fonts.display, bodyFont: fonts.body, monoFont: fonts.mono, ...(sl.chart.theme || {}) }
-      const vizEl = buildDataVizElement({ ...sl.chart, theme: vizTheme, x: mx, y: bodyTop + 12, w: vizW, h: bodyH - 24 }, { abBg: palette.bg, brand })
+      const vizEl = buildDataVizElement({ ...sl.chart, type: visual, theme: vizTheme, x: mx, y: bodyTop + 12, w: vizW, h: bodyH - 24 }, { abBg: palette.bg, brand })
       els.push(vizEl)
       if (hasNote) {
         const rx = mx + vizW + 40, rw = cw - vizW - 40
