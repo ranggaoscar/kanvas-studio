@@ -101,8 +101,11 @@ async function render(p) {
   const r = await files.readText('data', file)
   if (!r.ok) return { ok: false, error: r.message || r.error }
   engine.S.ctx = ctx; engine.S.folder = { id: 'data', path: INFO.ruangKerja, data: true }
-  const doc = engine.normalisasi(JSON.parse(r.text))
-  // muat semua font yang dipakai sebelum mengukur/menggambar
+  const doc = engine.normalisasi(JSON.parse(r.text)) // resolve cross-artboard component sources first
+  const filter = p.get('artboard_ids')
+  const ids = filter !== null ? new Set(JSON.parse(filter)) : target ? new Set([target]) : null
+  if (ids) doc.artboards = doc.artboards.filter(ab => ids.has(ab.id))
+  // muat font artboard terpilih sebelum mengukur/menggambar
   await engine.muatFontDoc(doc)   // Google Fonts apa pun yang dipakai desain
   await document.fonts.ready
   engine.terapkanTata(doc)   // auto-layout dihitung setelah font siap (ukuran teks akurat)
@@ -117,8 +120,8 @@ async function render(p) {
     if (br.ok && Array.isArray(br.brands)) brand = br.brands.find(b => b.id === doc.brand) || null
   }
   const cek = periksa(doc, { layoutTeks: engine.layoutTeks, fontStr: engine.fontStr, adaGambar: s => gambarAda.has(s), fontGagal: engine.fontGagal, brand })
-  const pilih = doc.artboards.filter(ab => !target || ab.id === target)
-  const hasil = []
+  const pilih = doc.artboards, hasil = []
+  if (p.get('mode') === 'qa_only') return { ok: true, judul: doc.judul, hasil, ...cek }
   if (format === 'pdf') {
     const hal = []
     for (const ab of pilih) {

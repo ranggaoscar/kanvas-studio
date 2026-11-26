@@ -5,6 +5,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sinkronKomponen, catatTimpaan, lepasInstance } from './komponen.js'
 import { bidangDariTitik } from './pena.js'
+import { backfillIds, heal } from './heal.js'
 
 const TIPE = ['teks', 'kotak', 'elips', 'gambar', 'path', 'grup']
 // ikon Lucide (app/dist/ikon.json, dibuat saat build)
@@ -69,15 +70,15 @@ function urutPohon(els) {
 }
 const keturunan = (ab, id) => { const out = [], jalan = x => { for (const c of ab.elemen) if (c.induk === x) { out.push(c); jalan(c.id) } }; jalan(id); return out }
 // elemen bersarang { tipe: "grup", anak: [...] } → daftar datar dengan `induk`
-function ratakan(list, induk, pakai, out = [], cariInduk = () => null) {
+function ratakan(list, induk, pakai, out = [], cariInduk = () => null, buatId = uid) {
   for (const e of list) {
     const { anak, ...el } = e
-    const id = el.id && !pakai.has(el.id) ? (pakai.add(el.id), el.id) : uid(el.tipe === 'grup' ? 'g' : 'e', pakai)
+    const id = el.id && !pakai.has(el.id) ? (pakai.add(el.id), el.id) : buatId(el.tipe === 'grup' ? 'g' : 'e', pakai, !el.id)
     const idInduk = induk || el.induk, g = idInduk ? (out.find(x => x.id === idInduk) || cariInduk(idInduk)) : null
     // teks tanpa lebar di dalam auto-layout: kolom → memenuhi lebar grup, baris → selebar isinya; di luar grup → 600
     if (el.tipe === 'teks' && el.w == null && el.lebar == null) { if (g?.tata) el.lebar = g.tata.arah === 'baris' ? 'peluk' : 'isi'; else el.w = 600 }
     out.push(cekElemen({ ...el, id, ...(idInduk ? { induk: idInduk } : {}) }))
-    if (Array.isArray(anak)) { if (el.tipe !== 'grup') salah(`${id}: only a grup can have "anak" (children)`); ratakan(anak, id, pakai, out, cariInduk) }
+    if (Array.isArray(anak)) { if (el.tipe !== 'grup') salah(`${id}: only a grup can have "anak" (children)`); ratakan(anak, id, pakai, out, cariInduk, buatId) }
   }
   return out
 }
@@ -154,23 +155,53 @@ export function desainBaru({ judul = 'Design', ukuran, w, h, nama, bg = '#FFFFFF
   return { versi: 1, judul, artboards: [{ id: 'a1', nama: nama || 'Artboard 1', x: 0, y: 0, w: W, h: H, bg, elemen: [] }] }
 }
 
-export function terapkanOps(asli, ops) {
+export function terapkanOps(asli, ops, { auto_heal = false } = {}) {
   if (!Array.isArray(ops) || !ops.length) salah('ops must be an array with at least 1 operation')
-  const doc = normalisasi(JSON.parse(JSON.stringify(asli))), pakai = semuaId(doc), hasil = []
-  const sebelum = JSON.parse(JSON.stringify(doc))
+  const doc = JSON.parse(JSON.stringify(asli)), healed = auto_heal ? backfillIds(doc) : []
+  normalisasi(doc)
+  const pakai = semuaId(doc), hasil = [], instanceIds = new Set(doc.artboards.flatMap(ab => ab.elemen.filter(e => e.salinan).map(e => e.id)))
+  let sebelum = JSON.parse(JSON.stringify(doc)), pending = false, seq = 0
+  const buatId = (p, used, missing, ab) => {
+    if (!auto_heal || !missing) return uid(p, used)
+    let id; do id = `heal-new-${++seq}`; while (used.has(id))
+    used.add(id); healed.push({ artboard: ab, id, rule: 'missing_id' }); return id
+  }
   const daftarMaster = () => { MASTER = new Map(); for (const ab of doc.artboards) for (const e of ab.elemen) if (e.komponen && e.tipe === 'grup') MASTER.set(e.id, { id: e.id, nama: e.nama, bagian: ab.elemen.filter(x => isiDari(ab, e.id, x) && !String(x.id).includes('.')) }) }   // anak hasil salinan lain (id ber-titik) bukan bagian master
   const isiDari = (ab, mid, x) => { for (let y = x; y?.induk;) { if (y.induk === mid) return true; y = ab.elemen.find(z => z.id === y.induk) } return false }
-  daftarMaster()
+  const adaSalinan = list => list.some(e => e?.tipe === 'salinan' || (Array.isArray(e?.anak) && adaSalinan(e.anak)))
+  const tandaiSalinan = list => { for (const e of list) if (e.salinan) instanceIds.add(e.id) }
+  const materialisasi = () => {
+    catatTimpaan(doc, sebelum)
+    sinkronKomponen(doc)
+    for (const ab of doc.artboards) ab.elemen = urutPohon(ab.elemen)
+    for (const id of semuaId(doc)) pakai.add(id)
+    sebelum = JSON.parse(JSON.stringify(doc)); pending = false
+  }
   ops.forEach((o, n) => {
     const op = ALIAS[o.op] || o.op, tag = `ops[${n}] (${o.op})`
     try {
+      // Ordinary adds never materialize instances mid-batch. Preserve existing ops that
+      // address derived children by flushing only at an explicit dependency boundary.
+      const targets = [o.id, o.sebelum, o.ke_grup, o.induk, o.set?.induk, ...(Array.isArray(o.ids) ? o.ids : [])]
+      const derived = id => {
+        if (typeof id !== 'string') return false
+        for (let i = id.lastIndexOf('.'); i > 0; i = id.lastIndexOf('.', i - 1)) if (instanceIds.has(id.slice(0, i))) return true
+        return false
+      }
+      const removesSource = instanceIds.size && (op === 'hapus_artboard' || (['hapus', 'lepas_grup'].includes(op) && targets.some(id => {
+        const f = id && cari(doc, id)
+        return f?.el.tipe === 'grup' && (f.el.komponen || keturunan(f.ab, id).some(e => e.komponen || e.salinan))
+      })))
+      if (pending && (removesSource || targets.some(derived) || (['hapus', 'lepas_grup', 'lepas_salinan'].includes(op) && targets.some(id => instanceIds.has(id))))) materialisasi()
       if (op === 'judul') { doc.judul = String(o.judul ?? o.title ?? doc.judul); hasil.push(`title → ${doc.judul}`) }
       else if (op === 'artboard') {
         const akhir = doc.artboards.at(-1)
         const [W, H] = o.w && o.h ? [o.w, o.h] : PRESET[String(o.ukuran || '').toLowerCase()] || (akhir ? [akhir.w, akhir.h] : [1920, 1080])
         const id = o.id && !pakai.has(o.id) ? (pakai.add(o.id), o.id) : uid('a', pakai)
         const ab = { id, nama: o.nama || `Artboard ${doc.artboards.length + 1}`, x: o.x ?? (akhir ? akhir.x + akhir.w + 160 : 0), y: o.y ?? (akhir ? akhir.y : 0), w: W, h: H, bg: o.bg ?? '#FFFFFF', elemen: [] }
-        ab.elemen.push(...ratakan(o.elemen || [], null, pakai))
+        if (adaSalinan(o.elemen || [])) daftarMaster()
+        ab.elemen.push(...ratakan(o.elemen || [], null, pakai, [], undefined, (p, s, missing) => buatId(p, s, missing, ab.id)))
+        tandaiSalinan(ab.elemen); pending = true
         doc.artboards.push(ab); hasil.push(`artboard ${id} "${ab.nama}" ${W}×${H}` + (ab.elemen.length ? ` + ${ab.elemen.length} element(s) (${ab.elemen.map(e => e.id).join(', ')})` : ''))
       } else if (op === 'ubah_artboard') {
         const ab = doc.artboards.find(a => a.id === o.id) || salah(`artboard ${o.id} does not exist`)
@@ -183,15 +214,20 @@ export function terapkanOps(asli, ops) {
         const list = Array.isArray(o.elemen) ? o.elemen : [o.elemen || salah('"elemen" is required')]
         const induk = o.ke_grup || o.induk || null
         if (induk && ab.elemen.find(e => e.id === induk)?.tipe !== 'grup') salah(`group ${induk} does not exist on artboard ${ab.id}`)
-        const baru = ratakan(list.map(e => (induk && !e.induk ? { ...e, induk } : e)), null, pakai, [], id => ab.elemen.find(x => x.id === id))
+        const ke = list.map(e => (induk && !e.induk ? { ...e, induk } : e))
+        const perluAnak = list => list.some(e => derived(e.induk) || (Array.isArray(e.anak) && perluAnak(e.anak)))
+        if (pending && perluAnak(ke)) materialisasi()
+        if (adaSalinan(ke)) daftarMaster()
+        const baru = ratakan(ke, null, pakai, [], id => ab.elemen.find(x => x.id === id), (p, s, missing) => buatId(p, s, missing, ab.id))
         for (const e of baru) if (e.induk && !baru.some(b => b.id === e.induk) && ab.elemen.find(x => x.id === e.induk)?.tipe !== 'grup') salah(`${e.id}: parent ${e.induk} is not a group`)
         const pos = o.sebelum ? ab.elemen.findIndex(e => e.id === o.sebelum) : -1
         if (pos >= 0) ab.elemen.splice(pos, 0, ...baru); else ab.elemen.push(...baru)
-        ab.elemen = urutPohon(ab.elemen); sinkronKomponen(doc); daftarMaster()
+        ab.elemen = urutPohon(ab.elemen); tandaiSalinan(baru); pending = true
         hasil.push(`+${baru.length} on ${ab.id}: ${baru.map(e => `${e.id} (${e.tipe}${e.induk ? ' ⊂ ' + e.induk : ''})`).join(', ')}`)
       } else if (op === 'ubah') {
         const ids = Array.isArray(o.ids) ? o.ids : [o.id]
-        for (const id of ids) { const f = cari(doc, id) || salah(`element ${id} does not exist`); terapkanSet(f.el, o.set); cekElemen(f.el) }
+        if (o.set?.tipe === 'salinan') daftarMaster()
+        for (const id of ids) { const f = cari(doc, id) || salah(`element ${id} does not exist`); terapkanSet(f.el, o.set); cekElemen(f.el); tandaiSalinan([f.el]) }
         hasil.push(`updated: ${ids.join(', ')}`)
       } else if (op === 'hapus') {
         const ids = Array.isArray(o.ids) ? o.ids : [o.id]
@@ -211,8 +247,10 @@ export function terapkanOps(asli, ops) {
         if (fs.some(f => f.ab !== ab)) salah('all elements must be on the same artboard')
         const kotak = fs.map(({ el }) => [el.x || 0, el.y || 0, (el.x || 0) + (el.w || 100), (el.y || 0) + (el.h || (el.ukuran || 32) * (el.lh || 1.2))])
         const x0 = Math.min(...kotak.map(k => k[0])), y0 = Math.min(...kotak.map(k => k[1]))
+        if (o.set?.tipe === 'salinan') daftarMaster()
         const g = cekElemen({ tipe: 'grup', nama: 'Group', x: x0, y: y0, w: Math.max(...kotak.map(k => k[2])) - x0, h: Math.max(...kotak.map(k => k[3])) - y0, fill: null, ...(o.set || {}),
-          id: o.id && !pakai.has(o.id) ? (pakai.add(o.id), o.id) : uid('g', pakai) })
+          id: o.id && !pakai.has(o.id) ? (pakai.add(o.id), o.id) : buatId('g', pakai, !o.id, ab.id) })
+        tandaiSalinan([g])
         if (fs[0].el.induk) g.induk = fs[0].el.induk
         ab.elemen.splice(Math.min(...fs.map(f => ab.elemen.indexOf(f.el))), 0, g)
         for (const { el } of fs) el.induk = g.id
@@ -222,20 +260,22 @@ export function terapkanOps(asli, ops) {
         if (f.el.tipe !== 'grup') salah(`${o.id} is not a group (group it first, or create a grup with "anak")`)
         if (f.el.salinan) salah(`${o.id} is a component copy; detach it first with lepas_salinan`)
         f.el.komponen = true; if (o.nama) f.el.nama = o.nama
-        daftarMaster(); hasil.push(`component "${f.el.nama || f.el.id}" (${f.el.id}). Use it: { "tipe": "salinan", "dari": "${f.el.nama || f.el.id}", "x": …, "y": …, "timpa": { "<part name>": { "teks": "…" } } }`)
+        hasil.push(`component "${f.el.nama || f.el.id}" (${f.el.id}). Use it: { "tipe": "salinan", "dari": "${f.el.nama || f.el.id}", "x": …, "y": …, "timpa": { "<part name>": { "teks": "…" } } }`)
       } else if (op === 'lepas_salinan') {
         const f = cari(doc, o.id) || salah(`element ${o.id} does not exist`); if (!f.el.salinan) salah(`${o.id} is not a component copy`)
-        sinkronKomponen(doc); let n = 0; lepasInstance(doc, o.id, () => uid('e', pakai)); void n
+        lepasInstance(doc, o.id, () => uid('e', pakai)); instanceIds.delete(o.id)
         hasil.push(`copy ${o.id} detached into a normal group`)
       } else if (op === 'lepas_grup') {
         const f = cari(doc, o.id) || salah(`group ${o.id} does not exist`); if (f.el.tipe !== 'grup') salah(`${o.id} is not a group`)
         for (const c of f.ab.elemen) if (c.induk === o.id) { if (f.el.induk) c.induk = f.el.induk; else delete c.induk }
         f.ab.elemen.splice(f.ab.elemen.indexOf(f.el), 1); hasil.push(`group ${o.id} ungrouped`)
       } else salah(`unknown op "${o.op}"`)
+      if (op !== 'judul') pending = true
     } catch (e) { throw new Error(`${tag}: ${e.message}`) }
   })
   catatTimpaan(doc, sebelum)
+  if (auto_heal) healed.push(...heal(doc))
   sinkronKomponen(doc)
   for (const ab of doc.artboards) ab.elemen = urutPohon(ab.elemen)
-  return { doc, hasil }
+  return { doc, hasil, ...(auto_heal ? { healed } : {}) }
 }

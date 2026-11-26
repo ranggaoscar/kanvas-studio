@@ -29,10 +29,13 @@ export function envMinimal(sumber = process.env) {
   return out
 }
 
-export async function render(studio, { file, artboard, format = 'png', skala = 1 }) {
+export async function render(studio, { file, artboard, artboard_ids, mode, format = 'png', skala = 1 }) {
   const browser = cariBrowser()
   if (!browser) return { ok: false, error: 'Chrome or Edge not found. Install Google Chrome or set KANVAS_BROWSER.' }
-  const q = new URLSearchParams({ file, format, skala: String(skala) }); if (artboard) q.set('artboard', artboard)
+  const q = new URLSearchParams({ file, format, skala: String(skala) })
+  if (artboard) q.set('artboard', artboard)
+  if (artboard_ids) q.set('artboard_ids', JSON.stringify(artboard_ids))
+  if (mode) q.set('mode', mode)
   // halaman bisa "selesai" sebelum font/gambar dari jaringan siap → ulangi sekali dengan waktu lebih panjang
   for (const anggaran of [20000, 60000]) {
     const profil = mkdtempSync(join(tmpdir(), 'kanvas-render-'))
