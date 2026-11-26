@@ -25,14 +25,14 @@
       ],
       "sudut": 150
      },
-     "id": "e98q0g"
+     "id": "ecrzyt"
     },
     {
      "tipe": "path",
      "x": 380,
      "y": 300,
      "w": 320,
-     "id": "e2676a",
+     "id": "euen8y",
      "ikon": "shopping-bag",
      "nama": "Icon shopping-bag",
      "h": 320,
@@ -64,7 +64,7 @@
      "fill": "#FFFFFF",
      "radius": 999,
      "bayangan": true,
-     "id": "gtsfm4"
+     "id": "g2os5s"
     },
     {
      "tipe": "teks",
@@ -76,8 +76,8 @@
      "tebal": 700,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "eex0f3",
-     "induk": "gtsfm4",
+     "id": "eehr4s",
+     "induk": "g2os5s",
      "x": 0,
      "y": 0
     },
@@ -91,8 +91,8 @@
      "tebal": 700,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "eey3tb",
-     "induk": "gtsfm4",
+     "id": "e5o0j3",
+     "induk": "g2os5s",
      "x": 0,
      "y": 0
     },
@@ -105,7 +105,7 @@
      "x": 80,
      "y": 880,
      "w": 920,
-     "id": "gq0y53",
+     "id": "gft0el",
      "tinggi": "peluk"
     },
     {
@@ -118,8 +118,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "ewbl8a",
-     "induk": "gq0y53",
+     "id": "erxmsa",
+     "induk": "gft0el",
      "x": 0,
      "y": 0
     },
@@ -132,8 +132,8 @@
       "jarak": 20,
       "rata": "akhir"
      },
-     "id": "gdzyaa",
-     "induk": "gq0y53",
+     "id": "gwcbxe",
+     "induk": "gft0el",
      "x": 0,
      "y": 0
     },
@@ -146,8 +146,8 @@
      "lh": 1.1,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "e9colo",
-     "induk": "gdzyaa",
+     "id": "eyw79e",
+     "induk": "gwcbxe",
      "x": 0,
      "y": 0
     },
@@ -159,8 +159,8 @@
      "warna": "#6F655D",
      "lh": 1.1,
      "lebar": "peluk",
-     "id": "ezajhr",
-     "induk": "gdzyaa",
+     "id": "ezbbzq",
+     "induk": "gwcbxe",
      "x": 0,
      "y": 0
     },
@@ -182,8 +182,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "grkrpg",
-     "induk": "gq0y53",
+     "id": "gvse3y",
+     "induk": "gft0el",
      "x": 0,
      "y": 0
     },
@@ -196,8 +196,8 @@
      "lh": 1.2,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "eppac8",
-     "induk": "grkrpg",
+     "id": "ei9rg6",
+     "induk": "gvse3y",
      "x": 0,
      "y": 0
     },
@@ -210,16 +210,16 @@
       "jarak": 12,
       "rata": "tengah"
      },
-     "id": "grywbc",
-     "induk": "gq0y53",
+     "id": "gyyt2y",
+     "induk": "gft0el",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "path",
      "w": 30,
-     "id": "e4o7s5",
-     "induk": "grywbc",
+     "id": "e6nzyv",
+     "induk": "gyyt2y",
      "ikon": "truck",
      "nama": "Icon truck",
      "h": 30,
@@ -245,8 +245,8 @@
      "warna": "#6F655D",
      "lh": 1.2,
      "lebar": "peluk",
-     "id": "eoms7a",
-     "induk": "grywbc",
+     "id": "e4j552",
+     "induk": "gyyt2y",
      "x": 0,
      "y": 0
     }

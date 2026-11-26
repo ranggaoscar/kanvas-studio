@@ -24,7 +24,7 @@
       ],
       "sudut": 150
      },
-     "id": "efszxm"
+     "id": "euzm4d"
     },
     {
      "tipe": "elips",
@@ -34,14 +34,14 @@
      "h": 420,
      "fill": "#7B61FF",
      "opacity": 0.35,
-     "id": "eviby2"
+     "id": "esrw5w"
     },
     {
      "tipe": "path",
      "x": 520,
      "y": 70,
      "w": 210,
-     "id": "efmdf1",
+     "id": "ef1vmr",
      "ikon": "wand-sparkles",
      "nama": "Icon wand-sparkles",
      "h": 210,
@@ -66,7 +66,7 @@
      "x": 60,
      "y": 430,
      "w": 674,
-     "id": "g69roq",
+     "id": "g6hi5m",
      "tinggi": "peluk"
     },
     {
@@ -86,8 +86,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "g3t3ag",
-     "induk": "g69roq",
+     "id": "g9wsv5",
+     "induk": "g6hi5m",
      "x": 0,
      "y": 0
     },
@@ -102,8 +102,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "peluk",
-     "id": "epp253",
-     "induk": "g3t3ag",
+     "id": "ek11fq",
+     "induk": "g9wsv5",
      "x": 0,
      "y": 0
     },
@@ -117,8 +117,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "ecjab1",
-     "induk": "g69roq",
+     "id": "e83p8r",
+     "induk": "g6hi5m",
      "x": 0,
      "y": 0
     },
@@ -130,8 +130,8 @@
      "warna": "#C9CCE8",
      "lh": 1.5,
      "lebar": "isi",
-     "id": "efqx8l",
-     "induk": "g69roq",
+     "id": "eaxvjx",
+     "induk": "g6hi5m",
      "x": 0,
      "y": 0
     },
@@ -141,8 +141,8 @@
       "arah": "kolom",
       "jarak": 14
      },
-     "id": "gjtn53",
-     "induk": "g69roq",
+     "id": "gudy5l",
+     "induk": "g6hi5m",
      "lebar": "peluk",
      "tinggi": "peluk",
      "x": 0,
@@ -157,16 +157,16 @@
       "jarak": 12,
       "rata": "tengah"
      },
-     "id": "gl1kqv",
-     "induk": "gjtn53",
+     "id": "gzukaj",
+     "induk": "gudy5l",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "path",
      "w": 24,
-     "id": "ehg0kg",
-     "induk": "gl1kqv",
+     "id": "epvc9v",
+     "induk": "gzukaj",
      "ikon": "calendar",
      "nama": "Icon calendar",
      "h": 24,
@@ -193,8 +193,8 @@
      "lh": 1.3,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "ehzxpm",
-     "induk": "gl1kqv",
+     "id": "ejknur",
+     "induk": "gzukaj",
      "x": 0,
      "y": 0
     },
@@ -207,16 +207,16 @@
       "jarak": 12,
       "rata": "tengah"
      },
-     "id": "gq02sm",
-     "induk": "gjtn53",
+     "id": "gtknb7",
+     "induk": "gudy5l",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "path",
      "w": 24,
-     "id": "ezp6y8",
-     "induk": "gq02sm",
+     "id": "ehf5ej",
+     "induk": "gtknb7",
      "ikon": "clock",
      "nama": "Icon clock",
      "h": 24,
@@ -243,8 +243,8 @@
      "lh": 1.3,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "elf187",
-     "induk": "gq02sm",
+     "id": "eh0oqq",
+     "induk": "gtknb7",
      "x": 0,
      "y": 0
     },
@@ -257,16 +257,16 @@
       "jarak": 12,
       "rata": "tengah"
      },
-     "id": "g5sisg",
-     "induk": "gjtn53",
+     "id": "gpc3l6",
+     "induk": "gudy5l",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "path",
      "w": 24,
-     "id": "e1gzms",
-     "induk": "g5sisg",
+     "id": "ezy6v7",
+     "induk": "gpc3l6",
      "ikon": "map-pin",
      "nama": "Icon map-pin",
      "h": 24,
@@ -293,8 +293,8 @@
      "lh": 1.3,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "e7ohvk",
-     "induk": "g5sisg",
+     "id": "ewmg09",
+     "induk": "gpc3l6",
      "x": 0,
      "y": 0
     },
@@ -316,8 +316,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "gx3u9p",
-     "induk": "g69roq",
+     "id": "ghr6z0",
+     "induk": "g6hi5m",
      "x": 0,
      "y": 0
     },
@@ -330,8 +330,8 @@
      "lh": 1.2,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "ewz8fn",
-     "induk": "gx3u9p",
+     "id": "ef749j",
+     "induk": "ghr6z0",
      "x": 0,
      "y": 0
     },
@@ -345,7 +345,7 @@
      "x": 60,
      "y": 1050,
      "w": 674,
-     "id": "ewon1w"
+     "id": "e5dfjz"
     }
    ]
   }

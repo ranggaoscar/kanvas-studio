@@ -25,7 +25,7 @@
      "h": 800,
      "fill": "#FFFFFF",
      "opacity": 0.1,
-     "id": "e9fpbb"
+     "id": "ecgemx"
     },
     {
      "tipe": "grup",
@@ -37,7 +37,7 @@
      "x": 90,
      "y": 520,
      "w": 900,
-     "id": "g4s6lu",
+     "id": "gr29p9",
      "tinggi": "peluk"
     },
     {
@@ -52,16 +52,16 @@
       "jarak": 24,
       "padding": 44
      },
-     "id": "g4kfde",
-     "induk": "g4s6lu",
+     "id": "gqp6wf",
+     "induk": "gr29p9",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "path",
      "w": 120,
-     "id": "emzwkp",
-     "induk": "g4kfde",
+     "id": "e0n9ti",
+     "induk": "gqp6wf",
      "ikon": "rocket",
      "nama": "Icon rocket",
      "h": 120,
@@ -96,8 +96,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "go12tc",
-     "induk": "g4s6lu",
+     "id": "g29vb7",
+     "induk": "gr29p9",
      "x": 0,
      "y": 0
     },
@@ -112,8 +112,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "peluk",
-     "id": "epdotp",
-     "induk": "go12tc",
+     "id": "ery5m3",
+     "induk": "g29vb7",
      "x": 0,
      "y": 0
     },
@@ -128,8 +128,8 @@
      "spasi": -3,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "ep6na7",
-     "induk": "g4s6lu",
+     "id": "e58i3q",
+     "induk": "gr29p9",
      "x": 0,
      "y": 0
     },
@@ -142,8 +142,8 @@
      "lh": 1.4,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "erqu1d",
-     "induk": "g4s6lu",
+     "id": "ec57z1",
+     "induk": "gr29p9",
      "x": 0,
      "y": 0
     },
@@ -157,14 +157,14 @@
      "x": 340,
      "y": 1620,
      "w": 400,
-     "id": "g5lkri",
+     "id": "gfhuxv",
      "tinggi": "peluk"
     },
     {
      "tipe": "path",
      "w": 64,
-     "id": "ehsdlz",
-     "induk": "g5lkri",
+     "id": "eeewpd",
+     "induk": "gfhuxv",
      "ikon": "chevrons-up",
      "nama": "Icon chevrons-up",
      "h": 64,
@@ -192,8 +192,8 @@
      "tebal": 700,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "ej7ppn",
-     "induk": "g5lkri",
+     "id": "e25agd",
+     "induk": "gfhuxv",
      "x": 0,
      "y": 0
     }

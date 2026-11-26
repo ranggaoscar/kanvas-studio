@@ -21,7 +21,7 @@
      "x": 140,
      "y": 110,
      "w": 1640,
-     "id": "gyk2uh",
+     "id": "g567ae",
      "tinggi": "peluk"
     },
     {
@@ -36,8 +36,8 @@
      "spasi": 3,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "e52xmv",
-     "induk": "gyk2uh",
+     "id": "e4xsf1",
+     "induk": "g567ae",
      "x": 0,
      "y": 0
     },
@@ -52,8 +52,8 @@
      "spasi": -2,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "e79d2t",
-     "induk": "gyk2uh",
+     "id": "ewpohu",
+     "induk": "g567ae",
      "x": 0,
      "y": 0
     },
@@ -101,7 +101,7 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "isi",
-     "id": "ewpzv3",
+     "id": "ekfry6",
      "induk": "paket",
      "x": 0,
      "y": 0
@@ -117,7 +117,7 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "e8okko",
+     "id": "esxwxc",
      "induk": "paket",
      "x": 0,
      "y": 0
@@ -131,7 +131,7 @@
      "lh": 1.45,
      "nama": "For",
      "lebar": "isi",
-     "id": "e8bwhr",
+     "id": "enu6k0",
      "induk": "paket",
      "x": 0,
      "y": 0
@@ -140,7 +140,7 @@
      "tipe": "kotak",
      "h": 2,
      "fill": "#E6E1D6",
-     "id": "exenrj",
+     "id": "empuet",
      "induk": "paket",
      "w": 100,
      "x": 0,
@@ -155,7 +155,7 @@
      "lh": 1.7,
      "nama": "Features",
      "lebar": "isi",
-     "id": "ee9umu",
+     "id": "e5l6hb",
      "induk": "paket",
      "x": 0,
      "y": 0
@@ -178,7 +178,7 @@
       ],
       "rata": "tengah"
      },
-     "id": "glcmyk",
+     "id": "gtekjl",
      "induk": "paket",
      "x": 0,
      "y": 0
@@ -192,40 +192,40 @@
      "lh": 1.2,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "e7kdah",
-     "induk": "glcmyk",
+     "id": "esq59a",
+     "induk": "gtekjl",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "grup",
      "induk": "deret-paket",
-     "id": "eaeh5k",
+     "id": "emgt2y",
      "salinan": "paket",
      "timpa": {
       "@": {
        "fill": "#101634"
       },
-      "ewpzv3": {
+      "ekfry6": {
        "teks": "Pro",
        "warna": "#FF8A6B"
       },
-      "e8okko": {
+      "esxwxc": {
        "teks": "$9",
        "warna": "#FFFFFF"
       },
-      "e8bwhr": {
+      "enu6k0": {
        "teks": "For creators",
        "warna": "#C9CCE8"
       },
-      "ee9umu": {
+      "e5l6hb": {
        "teks": "✓  Unlimited designs\n✓  PDF & SVG export\n✓  AI agent",
        "warna": "#FFFFFF"
       },
-      "glcmyk": {
+      "gtekjl": {
        "fill": "#FFFFFF"
       },
-      "e7kdah": {
+      "esq59a": {
        "warna": "#101634"
       }
      },
@@ -253,8 +253,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "isi",
-     "id": "eaeh5k.ewpzv3",
-     "induk": "eaeh5k",
+     "id": "emgt2y.ekfry6",
+     "induk": "emgt2y",
      "x": 0,
      "y": 0
     },
@@ -269,8 +269,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "eaeh5k.e8okko",
-     "induk": "eaeh5k",
+     "id": "emgt2y.esxwxc",
+     "induk": "emgt2y",
      "x": 0,
      "y": 0
     },
@@ -283,8 +283,8 @@
      "lh": 1.45,
      "nama": "For",
      "lebar": "isi",
-     "id": "eaeh5k.e8bwhr",
-     "induk": "eaeh5k",
+     "id": "emgt2y.enu6k0",
+     "induk": "emgt2y",
      "x": 0,
      "y": 0
     },
@@ -292,8 +292,8 @@
      "tipe": "kotak",
      "h": 2,
      "fill": "#E6E1D6",
-     "id": "eaeh5k.exenrj",
-     "induk": "eaeh5k",
+     "id": "emgt2y.empuet",
+     "induk": "emgt2y",
      "w": 100,
      "x": 0,
      "y": 0
@@ -307,8 +307,8 @@
      "lh": 1.7,
      "nama": "Features",
      "lebar": "isi",
-     "id": "eaeh5k.ee9umu",
-     "induk": "eaeh5k",
+     "id": "emgt2y.e5l6hb",
+     "induk": "emgt2y",
      "x": 0,
      "y": 0
     },
@@ -330,8 +330,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "eaeh5k.glcmyk",
-     "induk": "eaeh5k",
+     "id": "emgt2y.gtekjl",
+     "induk": "emgt2y",
      "x": 0,
      "y": 0
     },
@@ -344,27 +344,27 @@
      "lh": 1.2,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "eaeh5k.e7kdah",
-     "induk": "eaeh5k.glcmyk",
+     "id": "emgt2y.esq59a",
+     "induk": "emgt2y.gtekjl",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "grup",
      "induk": "deret-paket",
-     "id": "etfsv2",
+     "id": "ej7wij",
      "salinan": "paket",
      "timpa": {
-      "ewpzv3": {
+      "ekfry6": {
        "teks": "Team"
       },
-      "e8okko": {
+      "esxwxc": {
        "teks": "$29"
       },
-      "e8bwhr": {
+      "enu6k0": {
        "teks": "For 5 people"
       },
-      "ee9umu": {
+      "e5l6hb": {
        "teks": "✓  Everything in Pro\n✓  Shared brand kit\n✓  Comments"
       }
      },
@@ -392,8 +392,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "isi",
-     "id": "etfsv2.ewpzv3",
-     "induk": "etfsv2",
+     "id": "ej7wij.ekfry6",
+     "induk": "ej7wij",
      "x": 0,
      "y": 0
     },
@@ -408,8 +408,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "etfsv2.e8okko",
-     "induk": "etfsv2",
+     "id": "ej7wij.esxwxc",
+     "induk": "ej7wij",
      "x": 0,
      "y": 0
     },
@@ -422,8 +422,8 @@
      "lh": 1.45,
      "nama": "For",
      "lebar": "isi",
-     "id": "etfsv2.e8bwhr",
-     "induk": "etfsv2",
+     "id": "ej7wij.enu6k0",
+     "induk": "ej7wij",
      "x": 0,
      "y": 0
     },
@@ -431,8 +431,8 @@
      "tipe": "kotak",
      "h": 2,
      "fill": "#E6E1D6",
-     "id": "etfsv2.exenrj",
-     "induk": "etfsv2",
+     "id": "ej7wij.empuet",
+     "induk": "ej7wij",
      "w": 100,
      "x": 0,
      "y": 0
@@ -446,8 +446,8 @@
      "lh": 1.7,
      "nama": "Features",
      "lebar": "isi",
-     "id": "etfsv2.ee9umu",
-     "induk": "etfsv2",
+     "id": "ej7wij.e5l6hb",
+     "induk": "ej7wij",
      "x": 0,
      "y": 0
     },
@@ -469,8 +469,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "etfsv2.glcmyk",
-     "induk": "etfsv2",
+     "id": "ej7wij.gtekjl",
+     "induk": "ej7wij",
      "x": 0,
      "y": 0
     },
@@ -483,8 +483,8 @@
      "lh": 1.2,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "etfsv2.e7kdah",
-     "induk": "etfsv2.glcmyk",
+     "id": "ej7wij.esq59a",
+     "induk": "ej7wij.gtekjl",
      "x": 0,
      "y": 0
     }

@@ -168,6 +168,222 @@ TEMPLATE.push(bangun(
     { tipe: 'salinan', dari: 'Plan', timpa: { '@': { fill: N }, Name: { teks: 'Pro', warna: '#FF8A6B' }, Price: { teks: '$9', warna: '#FFFFFF' }, For: { teks: 'For creators', warna: '#C9CCE8' }, Features: { teks: '✓  Unlimited designs\n✓  PDF & SVG export\n✓  AI agent', warna: '#FFFFFF' }, Button: { fill: '#FFFFFF' }, 'Choose plan': { warna: N } } },
     { tipe: 'salinan', dari: 'Plan', timpa: { Name: { teks: 'Team' }, Price: { teks: '$29' }, For: { teks: 'For 5 people' }, Features: { teks: '✓  Everything in Pro\n✓  Shared brand kit\n✓  Comments' } } }] }]]))
 
+// 7. Business / Admin Report A4 — 4 halaman (Corporate Premium × Swiss Editorial), komponen "KPI Card"
+const R_BG = '#FFFFFF', R_SURF = '#F4F6F9', R_INK = '#0F172A', R_MUT = '#475569', R_ACC = '#0B5D56', R_RULE = '#DCE3EC'
+const R_DISP = 'DM Serif Display', R_BODY = 'Inter', R_MONO = 'IBM Plex Mono'
+const rHead = (sec) => [
+  t('QUARTERLY OPERATIONS REVIEW', { x: 56, y: 56, w: 420, font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.4, warna: R_MUT, lh: 1.2 }),
+  t(sec, { x: 492, y: 56, w: 246, font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.4, warna: R_ACC, rata: 'kanan', lh: 1.2 }),
+  { tipe: 'kotak', x: 56, y: 88, w: 682, h: 1, fill: R_RULE, radius: 0 }
+]
+const rFoot = (pg) => [
+  { tipe: 'kotak', x: 56, y: 1046, w: 682, h: 1, fill: R_RULE, radius: 0 },
+  t('NORTHSTAR OPERATIONS  ·  INTERNAL EXECUTIVE', { x: 56, y: 1058, w: 480, font: R_MONO, ukuran: 13, tebal: 500, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }),
+  t(`PAGE ${pg} / 04`, { x: 552, y: 1058, w: 186, font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.2, warna: R_MUT, rata: 'kanan', lh: 1.2 })
+]
+const rRow = (widths, cells, opts = {}) => baris(
+  cells.map((c, ci) => t(c, {
+    w: widths[ci],
+    font: opts.header || ci >= (opts.rightFrom ?? 1) ? R_MONO : R_BODY,
+    ukuran: opts.header ? 13 : 14,
+    tebal: opts.header || opts.total ? 700 : ci === 0 ? 600 : 500,
+    kapital: !!opts.header,
+    spasi: opts.header ? 0.8 : 0,
+    warna: opts.header ? '#FFFFFF' : (opts.total && ci === cells.length - 1 ? R_ACC : R_INK),
+    rata: ci >= (opts.rightFrom ?? 1) ? 'kanan' : 'kiri',
+    lh: 1.25
+  })),
+  {
+    lebar: 'isi', tinggi: 'peluk',
+    fill: opts.header ? R_INK : opts.zebra ? R_SURF : R_BG,
+    radius: opts.header || opts.total ? 4 : 0,
+    ...(opts.header || opts.total ? {} : { garis: { tebal: 1, warna: R_RULE } }),
+    tata: { jarak: 0, padding: [opts.header || opts.total ? 12 : 11, 14, opts.header || opts.total ? 12 : 11, 14], rata: 'tengah' }
+  }
+)
+const T_W = [226, 114, 114, 104, 96]
+const A_W = [258, 150, 126, 120]
+
+TEMPLATE.push(bangun(
+  { id: 'admin-report', nama: 'Business / Admin Report A4', kategori: 'Report', deskripsi: '4-page A4 executive & admin report (corporate-premium): cover, KPI summary + chart, zebra-striped tabular data table, and conclusions & action plan.' },
+  { judul: 'Quarterly Operations & Financial Review', ukuran: 'a4', nama: 'Cover', bg: R_BG },
+  [
+    // Page 1: Executive Cover
+    [{ op: 'tambah', artboard: 'a1', elemen: [
+      t('NORTHSTAR OPERATIONS', { x: 56, y: 60, w: 400, font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 2, warna: R_ACC, lh: 1.2 }),
+      t('Q3 2026 REPORT', { x: 492, y: 60, w: 246, font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.5, warna: R_MUT, rata: 'kanan', lh: 1.2 }),
+      { tipe: 'kotak', x: 56, y: 112, w: 72, h: 4, fill: R_ACC, radius: 0 },
+      t('Quarterly Operations\n& Financial Review', { x: 56, y: 176, w: 682, font: R_DISP, ukuran: 50, tebal: 700, warna: R_INK, lh: 1.08, spasi: -1 }),
+      t('Consolidated revenue performance, regional unit economics, and Q4 operational priorities prepared for the executive committee.', { x: 56, y: 312, w: 600, font: R_BODY, ukuran: 18, warna: R_MUT, lh: 1.5 }),
+      baris([
+        kolom([
+          t('TOTAL REVENUE', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }),
+          t('$4.82M', { font: R_DISP, ukuran: 34, tebal: 700, warna: R_ACC, lh: 1.05 }),
+          t('+18.4% vs Q2 2026', { font: R_MONO, ukuran: 13, tebal: 600, warna: R_ACC, lh: 1.25 })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_ACC }, tata: { jarak: 8, padding: 20, rata: 'regang' } }),
+        kolom([
+          t('OPERATING MARGIN', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }),
+          t('24.6%', { font: R_DISP, ukuran: 34, tebal: 700, warna: R_INK, lh: 1.05 }),
+          t('+210 bps YoY', { font: R_MONO, ukuran: 13, tebal: 600, warna: R_MUT, lh: 1.25 })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 8, padding: 20, rata: 'regang' } }),
+        kolom([
+          t('SLA FULFILLMENT', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }),
+          t('98.4%', { font: R_DISP, ukuran: 34, tebal: 700, warna: R_INK, lh: 1.05 }),
+          t('Above 97% target', { font: R_MONO, ukuran: 13, tebal: 600, warna: R_MUT, lh: 1.25 })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 8, padding: 20, rata: 'regang' } })
+      ], { x: 56, y: 500, w: 682, tinggi: 'peluk', tata: { jarak: 16, rata: 'regang' } }),
+      { tipe: 'kotak', x: 56, y: 956, w: 682, h: 1, fill: R_RULE, radius: 0 },
+      baris([
+        kolom([t('PREPARED BY', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }), t('Finance & Operations Office', { font: R_BODY, ukuran: 14, tebal: 600, warna: R_INK, lh: 1.3 })], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } }),
+        kolom([t('PERIOD COVERED', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }), t('Jul 1 – Sep 30, 2026', { font: R_BODY, ukuran: 14, tebal: 600, warna: R_INK, lh: 1.3 })], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } }),
+        kolom([t('DOCUMENT ID', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }), t('OPS-2026-Q3 · INTERNAL', { font: R_BODY, ukuran: 14, tebal: 600, warna: R_INK, lh: 1.3 })], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } })
+      ], { x: 56, y: 976, w: 682, tinggi: 'peluk', tata: { jarak: 20, rata: 'awal' } })
+    ] }],
+
+    // Page 2: KPI Summary + Native Quarterly Trend Chart (with reusable KPI Card component)
+    [{ op: 'artboard', nama: 'KPI & Trend', ukuran: 'a4', bg: R_BG, elemen: [
+      ...rHead('01 / KPI SUMMARY'),
+      kolom([
+        t('Revenue rose 18.4% QoQ while unit cost declined 6.2%', { font: R_DISP, ukuran: 28, tebal: 700, warna: R_INK, lh: 1.15, spasi: -0.5 }),
+        t('All three operating divisions cleared Q3 margin targets ahead of Q4 peak capacity.', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.4 })
+      ], { x: 56, y: 112, w: 682, tinggi: 'peluk', tata: { jarak: 10, rata: 'regang' } }),
+      baris([
+        kolom([
+          t('QUARTERLY REVENUE', { nama: 'Label', font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1, warna: R_MUT, lh: 1.2 }),
+          t('$4.82M', { nama: 'Value', font: R_DISP, ukuran: 34, tebal: 700, warna: R_ACC, lh: 1.05 }),
+          t('+18.4% QoQ', { nama: 'Delta', font: R_MONO, ukuran: 13, tebal: 600, warna: R_ACC, lh: 1.25 })
+        ], { id: 'kpi-card', nama: 'KPI Card', lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_ACC }, tata: { jarak: 8, padding: 18, rata: 'regang' } })
+      ], { id: 'kpi-strip', x: 56, y: 212, w: 682, tinggi: 'peluk', tata: { jarak: 16, rata: 'regang' } }),
+      // Framed native bar chart (100% editable Kanvas primitives)
+      {
+        tipe: 'grup', nama: 'Quarterly Revenue Chart', x: 56, y: 372, w: 682, h: 364, fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE },
+        anak: [
+          t('Quarterly Revenue Trajectory (USD Millions)', { x: 80, y: 396, w: 634, font: R_BODY, ukuran: 16, tebal: 700, warna: R_INK, lh: 1.25 }),
+          t('Consolidated net billings · Q4 2025 through Q3 2026', { x: 80, y: 420, w: 634, font: R_BODY, ukuran: 13, warna: R_MUT, lh: 1.3 }),
+          { tipe: 'kotak', x: 80, y: 474, w: 634, h: 1, fill: R_RULE, radius: 0 },
+          { tipe: 'kotak', x: 80, y: 542, w: 634, h: 1, fill: R_RULE, radius: 0 },
+          { tipe: 'kotak', x: 80, y: 610, w: 634, h: 1, fill: R_RULE, radius: 0 },
+          { tipe: 'kotak', x: 80, y: 678, w: 634, h: 2, fill: R_INK, radius: 0 },
+          // Q4'25 ($3.4M -> 144px)
+          { tipe: 'kotak', x: 118, y: 534, w: 84, h: 144, fill: '#94A3B8', radius: 4 },
+          t('$3.4M', { x: 108, y: 508, w: 104, font: R_MONO, ukuran: 14, tebal: 700, warna: R_INK, rata: 'tengah', lh: 1.2 }),
+          t('Q4 2025', { x: 108, y: 692, w: 104, font: R_MONO, ukuran: 13, tebal: 600, warna: R_MUT, rata: 'tengah', lh: 1.2 }),
+          // Q1'26 ($3.8M -> 161px)
+          { tipe: 'kotak', x: 276, y: 517, w: 84, h: 161, fill: '#94A3B8', radius: 4 },
+          t('$3.8M', { x: 266, y: 491, w: 104, font: R_MONO, ukuran: 14, tebal: 700, warna: R_INK, rata: 'tengah', lh: 1.2 }),
+          t('Q1 2026', { x: 266, y: 692, w: 104, font: R_MONO, ukuran: 13, tebal: 600, warna: R_MUT, rata: 'tengah', lh: 1.2 }),
+          // Q2'26 ($4.1M -> 174px)
+          { tipe: 'kotak', x: 434, y: 504, w: 84, h: 174, fill: '#64748B', radius: 4 },
+          t('$4.1M', { x: 424, y: 478, w: 104, font: R_MONO, ukuran: 14, tebal: 700, warna: R_INK, rata: 'tengah', lh: 1.2 }),
+          t('Q2 2026', { x: 424, y: 692, w: 104, font: R_MONO, ukuran: 13, tebal: 600, warna: R_MUT, rata: 'tengah', lh: 1.2 }),
+          // Q3'26 ($4.8M -> 204px, highlighted accent)
+          { tipe: 'kotak', x: 592, y: 474, w: 84, h: 204, fill: R_ACC, radius: 4 },
+          t('$4.8M', { x: 582, y: 448, w: 104, font: R_MONO, ukuran: 14, tebal: 700, warna: R_ACC, rata: 'tengah', lh: 1.2 }),
+          t('Q3 2026', { x: 582, y: 692, w: 104, font: R_MONO, ukuran: 13, tebal: 700, warna: R_INK, rata: 'tengah', lh: 1.2 })
+        ]
+      },
+      kolom([
+        t('EXECUTIVE TAKEAWAYS', { font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.5, warna: R_ACC, lh: 1.2 }),
+        t('—  Enterprise renewals reached 96.2%, adding $720K in net expansion revenue.', { font: R_BODY, ukuran: 14, warna: R_INK, lh: 1.4 }),
+        t('—  Automated warehouse routing trimmed fulfillment cost per order by 6.2%.', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.4 }),
+        t('—  Cash conversion cycle improved from 34 days to 27 days ahead of Q4.', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.4 })
+      ], { x: 56, y: 768, w: 682, tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 10, padding: 20, rata: 'regang' } }),
+      ...rFoot('02')
+    ] },
+    { op: 'jadikan_komponen', id: 'kpi-card' },
+    { op: 'tambah', ke_grup: 'kpi-strip', elemen: [
+      { tipe: 'salinan', dari: 'KPI Card', timpa: { '@': { garis: { tebal: 1, warna: R_RULE } }, Label: { teks: 'OPERATING MARGIN' }, Value: { teks: '24.6%', warna: R_INK }, Delta: { teks: '+210 bps YoY', warna: R_MUT } } },
+      { tipe: 'salinan', dari: 'KPI Card', timpa: { '@': { garis: { tebal: 1, warna: R_RULE } }, Label: { teks: 'UNIT COST' }, Value: { teks: '$14.20', warna: R_INK }, Delta: { teks: '-6.2% QoQ', warna: R_MUT } } }
+    ] }],
+
+    // Page 3: Clean Zebra-Striped Tabular Data Table
+    [{ op: 'artboard', nama: 'Regional Table', ukuran: 'a4', bg: R_BG, elemen: [
+      ...rHead('02 / REGIONAL BREAKDOWN'),
+      kolom([
+        t('APAC and EMEA drove 74% of net quarterly expansion', { font: R_DISP, ukuran: 28, tebal: 700, warna: R_INK, lh: 1.15, spasi: -0.5 }),
+        t('Figures in USD thousands · Audited close through September 30, 2026 (8 active units).', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.35 })
+      ], { x: 56, y: 112, w: 682, tinggi: 'peluk', tata: { jarak: 10, rata: 'regang' } }),
+      kolom([
+        rRow(T_W, ['REGION / UNIT', 'ACTUAL', 'BUDGET', 'VARIANCE', 'MARGIN'], { header: true }),
+        rRow(T_W, ['APAC — Enterprise', '1,180', '1,050', '+12.4%', '28.1%'], { zebra: false }),
+        rRow(T_W, ['APAC — Commercial', '640', '610', '+4.9%', '23.4%'], { zebra: true }),
+        rRow(T_W, ['EMEA — Northern Hub', '920', '840', '+9.5%', '26.8%'], { zebra: false }),
+        rRow(T_W, ['EMEA — DACH & Benelux', '590', '560', '+5.4%', '24.2%'], { zebra: true }),
+        rRow(T_W, ['North America — East', '710', '695', '+2.2%', '22.9%'], { zebra: false }),
+        rRow(T_W, ['North America — West', '460', '480', '-4.2%', '20.5%'], { zebra: true }),
+        rRow(T_W, ['LATAM — Partner Channel', '195', '180', '+8.3%', '21.7%'], { zebra: false }),
+        rRow(T_W, ['Global Managed Services', '125', '115', '+8.7%', '27.4%'], { zebra: true }),
+        { tipe: 'kotak', lebar: 'isi', h: 2, fill: R_INK, radius: 0 },
+        rRow(T_W, ['Total Consolidated', '4,820', '4,530', '+6.4%', '24.6%'], { zebra: true, total: true })
+      ], { x: 56, y: 212, w: 682, tinggi: 'peluk', tata: { jarak: 0, rata: 'regang' } }),
+      baris([
+        kolom([
+          t('TOP PERFORMING UNIT', { font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.2, warna: R_ACC, lh: 1.2 }),
+          t('APAC Enterprise (+12.4% vs budget)', { font: R_BODY, ukuran: 15, tebal: 700, warna: R_INK, lh: 1.3 }),
+          t('$1,180K revenue at 28.1% operating margin across 14 new logos.', { font: R_BODY, ukuran: 13, warna: R_MUT, lh: 1.4 })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_ACC }, tata: { jarak: 6, padding: [16, 18, 16, 18], rata: 'regang' } }),
+        kolom([
+          t('VARIANCE WATCH ITEM', { font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.2, warna: R_MUT, lh: 1.2 }),
+          t('NA West (-4.2% vs budget)', { font: R_BODY, ukuran: 15, tebal: 700, warna: R_INK, lh: 1.3 }),
+          t('One $42K enterprise renewal shifted to October close; pipeline healthy.', { font: R_BODY, ukuran: 13, warna: R_MUT, lh: 1.4 })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 6, padding: [16, 18, 16, 18], rata: 'regang' } })
+      ], { x: 56, y: 644, w: 682, tinggi: 'peluk', tata: { jarak: 16, rata: 'regang' } }),
+      kolom([
+        t('AUDIT & METHODOLOGY NOTE', { font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.3, warna: R_ACC, lh: 1.2 }),
+        t('Revenue recognized under IFRS-15 at constant Q3 FX rates. Table follows the 10-row first-page pagination guideline; continuation pages repeat the header row.', { font: R_BODY, ukuran: 13, warna: R_MUT, lh: 1.45 })
+      ], { x: 56, y: 788, w: 682, tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 6, padding: [16, 18, 16, 18], rata: 'regang' } }),
+      ...rFoot('03')
+    ] }],
+
+    // Page 4: Conclusions, Action Plan & Sign-Off
+    [{ op: 'artboard', nama: 'Conclusions', ukuran: 'a4', bg: R_BG, elemen: [
+      ...rHead('03 / CONCLUSIONS & ACTIONS'),
+      kolom([
+        t('Three operational priorities for Q4 execution', { font: R_DISP, ukuran: 28, tebal: 700, warna: R_INK, lh: 1.15, spasi: -0.5 }),
+        t('Lock in Q3 margin gains while accelerating North America renewal recovery.', { font: R_BODY, ukuran: 15, warna: R_MUT, lh: 1.45 })
+      ], { x: 56, y: 112, w: 682, tinggi: 'peluk', tata: { jarak: 10, rata: 'regang' } }),
+      kolom([
+        baris([
+          t('01', { w: 34, font: R_MONO, ukuran: 16, tebal: 700, warna: R_ACC, lh: 1.2 }),
+          kolom([
+            t('Expand APAC enterprise onboarding capacity by 20%', { font: R_BODY, ukuran: 15, tebal: 700, warna: R_INK, lh: 1.3 }),
+            t('Strongest regional margin (28.1%) with Q4 pipeline up 31% QoQ.', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.4 })
+          ], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 16, padding: [14, 18, 14, 18], rata: 'awal' } }),
+        baris([
+          t('02', { w: 34, font: R_MONO, ukuran: 16, tebal: 700, warna: R_ACC, lh: 1.2 }),
+          kolom([
+            t('Close deferred North America West renewals by Nov 15', { font: R_BODY, ukuran: 15, tebal: 700, warna: R_INK, lh: 1.3 }),
+            t('Recovers $42K variance and brings NA West back above 22% operating margin.', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.4 })
+          ], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 16, padding: [14, 18, 14, 18], rata: 'awal' } }),
+        baris([
+          t('03', { w: 34, font: R_MONO, ukuran: 16, tebal: 700, warna: R_ACC, lh: 1.2 }),
+          kolom([
+            t('Roll out automated routing to EMEA Northern Hub', { font: R_BODY, ukuran: 15, tebal: 700, warna: R_INK, lh: 1.3 }),
+            t('Replicates Q3 unit-cost savings across 38% of European order volume.', { font: R_BODY, ukuran: 14, warna: R_MUT, lh: 1.4 })
+          ], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } })
+        ], { lebar: 'isi', tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 16, padding: [14, 18, 14, 18], rata: 'awal' } })
+      ], { x: 56, y: 212, w: 682, tinggi: 'peluk', tata: { jarak: 16, rata: 'regang' } }),
+      kolom([
+        t('Q4 ACTION PLAN & OWNERSHIP', { font: R_MONO, ukuran: 13, tebal: 700, kapital: true, spasi: 1.5, warna: R_ACC, lh: 1.2 }),
+        kolom([
+          rRow(A_W, ['INITIATIVE', 'OWNER', 'TARGET DATE', 'STATUS'], { header: true, rightFrom: 2 }),
+          rRow(A_W, ['APAC Onboarding Pod Expansion', 'VP Delivery', 'Nov 01, 2026', 'In Progress'], { zebra: false, rightFrom: 2 }),
+          rRow(A_W, ['NA West Renewal Taskforce', 'Dir. Accounts', 'Nov 15, 2026', 'Active'], { zebra: true, rightFrom: 2 }),
+          rRow(A_W, ['EMEA Routing Automation', 'Head of Ops', 'Dec 10, 2026', 'Scheduled'], { zebra: false, rightFrom: 2 }),
+          rRow(A_W, ['FY27 Budget & SLA Baseline', 'Finance Ops', 'Dec 18, 2026', 'Planned'], { zebra: true, rightFrom: 2 })
+        ], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 0, rata: 'regang' } })
+      ], { x: 56, y: 516, w: 682, tinggi: 'peluk', tata: { jarak: 12, rata: 'regang' } }),
+      baris([
+        kolom([t('PREPARED BY', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1, warna: R_MUT, lh: 1.2 }), t('Finance & Ops Office', { font: R_BODY, ukuran: 14, tebal: 600, warna: R_INK, lh: 1.25 })], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } }),
+        kolom([t('REVIEWED BY', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1, warna: R_MUT, lh: 1.2 }), t('VP Operations', { font: R_BODY, ukuran: 14, tebal: 600, warna: R_INK, lh: 1.25 })], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } }),
+        kolom([t('NEXT REVIEW', { font: R_MONO, ukuran: 13, tebal: 600, kapital: true, spasi: 1, warna: R_MUT, lh: 1.2 }), t('Jan 15, 2027', { font: R_BODY, ukuran: 14, tebal: 600, warna: R_ACC, lh: 1.25 })], { lebar: 'isi', tinggi: 'peluk', tata: { jarak: 4, rata: 'regang' } })
+      ], { x: 56, y: 868, w: 682, tinggi: 'peluk', fill: R_SURF, radius: 6, garis: { tebal: 1, warna: R_RULE }, tata: { jarak: 16, padding: [16, 18, 16, 18], rata: 'awal' } }),
+      ...rFoot('04')
+    ] }]
+  ]))
+
 mkdirSync(join(AKAR, 'templates'), { recursive: true })
 for (const d of TEMPLATE) writeFileSync(join(AKAR, 'templates', d.meta.id + '.kanvas.json'), JSON.stringify(d, null, 1))
 console.log(TEMPLATE.map(d => `${d.meta.id}: ${d.artboards.length} artboard, ${d.artboards.reduce((n, a) => n + a.elemen.length, 0)} elemen`).join('\n'))

@@ -25,7 +25,7 @@
      "h": 1000,
      "fill": "#FF4D3D",
      "opacity": 0.14,
-     "id": "e0ufl1"
+     "id": "e2vql3"
     },
     {
      "tipe": "elips",
@@ -35,7 +35,7 @@
      "h": 520,
      "fill": "#7B61FF",
      "opacity": 0.18,
-     "id": "ekirjz"
+     "id": "ek57m5"
     },
     {
      "tipe": "grup",
@@ -46,7 +46,7 @@
      "x": 140,
      "y": 230,
      "w": 1180,
-     "id": "gzs5cl",
+     "id": "gurm5h",
      "tinggi": "peluk"
     },
     {
@@ -66,8 +66,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "gkre5h",
-     "induk": "gzs5cl",
+     "id": "ghn7nc",
+     "induk": "gurm5h",
      "x": 0,
      "y": 0
     },
@@ -82,8 +82,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "peluk",
-     "id": "er7pxf",
-     "induk": "gkre5h",
+     "id": "ekz12h",
+     "induk": "ghn7nc",
      "x": 0,
      "y": 0
     },
@@ -97,8 +97,8 @@
      "tebal": 700,
      "spasi": -3,
      "lebar": "isi",
-     "id": "e8dnr0",
-     "induk": "gzs5cl",
+     "id": "ekjbfd",
+     "induk": "gurm5h",
      "x": 0,
      "y": 0
     },
@@ -110,8 +110,8 @@
      "warna": "#C9CCE8",
      "lh": 1.45,
      "lebar": "isi",
-     "id": "e5dm1z",
-     "induk": "gzs5cl",
+     "id": "elwuhs",
+     "induk": "gurm5h",
      "x": 0,
      "y": 0
     },
@@ -125,12 +125,12 @@
      "x": 140,
      "y": 940,
      "w": 1200,
-     "id": "egen88"
+     "id": "ecv541"
     }
    ]
   },
   {
-   "id": "auau4e",
+   "id": "aptlnp",
    "nama": "Problem",
    "x": 2080,
    "y": 0,
@@ -147,7 +147,7 @@
      "x": 140,
      "y": 200,
      "w": 820,
-     "id": "g2rash",
+     "id": "gqygsm",
      "tinggi": "peluk"
     },
     {
@@ -161,8 +161,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "isi",
-     "id": "e9ogfn",
-     "induk": "g2rash",
+     "id": "eh2xdc",
+     "induk": "gqygsm",
      "x": 0,
      "y": 0
     },
@@ -176,8 +176,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "ecasrg",
-     "induk": "g2rash",
+     "id": "ebxla9",
+     "induk": "gqygsm",
      "x": 0,
      "y": 0
     },
@@ -189,8 +189,8 @@
      "warna": "#4B5274",
      "lh": 1.45,
      "lebar": "isi",
-     "id": "e6tqef",
-     "induk": "g2rash",
+     "id": "e6c39e",
+     "induk": "gqygsm",
      "x": 0,
      "y": 0
     },
@@ -208,7 +208,7 @@
      "h": 680,
      "fill": "#101634",
      "radius": 40,
-     "id": "g0tbdb"
+     "id": "gjgnbj"
     },
     {
      "tipe": "teks",
@@ -220,8 +220,8 @@
      "tebal": 700,
      "spasi": -6,
      "lebar": "isi",
-     "id": "eqlqag",
-     "induk": "g0tbdb",
+     "id": "eiq8ar",
+     "induk": "gjgnbj",
      "x": 0,
      "y": 0
     },
@@ -233,8 +233,8 @@
      "warna": "#FFFFFF",
      "lh": 1.45,
      "lebar": "isi",
-     "id": "eyukji",
-     "induk": "g0tbdb",
+     "id": "e0sw78",
+     "induk": "gjgnbj",
      "x": 0,
      "y": 0
     },
@@ -246,15 +246,15 @@
      "warna": "#9DA2C8",
      "lh": 1.45,
      "lebar": "isi",
-     "id": "eo6j9g",
-     "induk": "g0tbdb",
+     "id": "e4dpwg",
+     "induk": "gjgnbj",
      "x": 0,
      "y": 0
     }
    ]
   },
   {
-   "id": "afj535",
+   "id": "akc9ho",
    "nama": "Solution",
    "x": 4160,
    "y": 0,
@@ -271,7 +271,7 @@
      "x": 140,
      "y": 190,
      "w": 1400,
-     "id": "g0f16j",
+     "id": "g3t9qy",
      "tinggi": "peluk"
     },
     {
@@ -285,8 +285,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "isi",
-     "id": "efi4kf",
-     "induk": "g0f16j",
+     "id": "eoulvx",
+     "induk": "g3t9qy",
      "x": 0,
      "y": 0
     },
@@ -300,8 +300,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "eohe6b",
-     "induk": "g0f16j",
+     "id": "eou9as",
+     "induk": "g3t9qy",
      "x": 0,
      "y": 0
     },
@@ -348,7 +348,7 @@
       "jarak": 24,
       "padding": 18
      },
-     "id": "gfxq4r",
+     "id": "gdf21k",
      "induk": "kartu-fitur",
      "x": 0,
      "y": 0
@@ -357,8 +357,8 @@
      "tipe": "path",
      "nama": "Icon",
      "w": 44,
-     "id": "egf39y",
-     "induk": "gfxq4r",
+     "id": "ercwma",
+     "induk": "gdf21k",
      "ikon": "zap",
      "h": 44,
      "vb": [
@@ -386,7 +386,7 @@
      "spasi": -2,
      "nama": "Title",
      "lebar": "isi",
-     "id": "etje7d",
+     "id": "eoyoxa",
      "induk": "kartu-fitur",
      "x": 0,
      "y": 0
@@ -400,7 +400,7 @@
      "lh": 1.45,
      "nama": "Body",
      "lebar": "isi",
-     "id": "emzo6m",
+     "id": "ek4epo",
      "induk": "kartu-fitur",
      "x": 0,
      "y": 0
@@ -408,17 +408,17 @@
     {
      "tipe": "grup",
      "induk": "deret-fitur",
-     "id": "e28kzw",
+     "id": "e5dkjk",
      "salinan": "kartu-fitur",
      "timpa": {
-      "egf39y": {
+      "ercwma": {
        "ikon": "link",
        "d": "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
       },
-      "etje7d": {
+      "eoyoxa": {
        "teks": "Connected"
       },
-      "emzo6m": {
+      "ek4epo": {
        "teks": "One click to the tools your team already uses: email, chat and calendar."
       }
      },
@@ -445,8 +445,8 @@
       "jarak": 24,
       "padding": 18
      },
-     "id": "e28kzw.gfxq4r",
-     "induk": "e28kzw",
+     "id": "e5dkjk.gdf21k",
+     "induk": "e5dkjk",
      "x": 0,
      "y": 0
     },
@@ -454,8 +454,8 @@
      "tipe": "path",
      "nama": "Icon",
      "w": 44,
-     "id": "e28kzw.egf39y",
-     "induk": "e28kzw.gfxq4r",
+     "id": "e5dkjk.ercwma",
+     "induk": "e5dkjk.gdf21k",
      "ikon": "link",
      "h": 44,
      "vb": [
@@ -483,8 +483,8 @@
      "spasi": -2,
      "nama": "Title",
      "lebar": "isi",
-     "id": "e28kzw.etje7d",
-     "induk": "e28kzw",
+     "id": "e5dkjk.eoyoxa",
+     "induk": "e5dkjk",
      "x": 0,
      "y": 0
     },
@@ -497,25 +497,25 @@
      "lh": 1.45,
      "nama": "Body",
      "lebar": "isi",
-     "id": "e28kzw.emzo6m",
-     "induk": "e28kzw",
+     "id": "e5dkjk.ek4epo",
+     "induk": "e5dkjk",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "grup",
      "induk": "deret-fitur",
-     "id": "esq0mb",
+     "id": "el6bac",
      "salinan": "kartu-fitur",
      "timpa": {
-      "egf39y": {
+      "ercwma": {
        "ikon": "shield-check",
        "d": "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"
       },
-      "etje7d": {
+      "eoyoxa": {
        "teks": "Secure"
       },
-      "emzo6m": {
+      "ek4epo": {
        "teks": "Your data stays yours, with access rights per person."
       }
      },
@@ -542,8 +542,8 @@
       "jarak": 24,
       "padding": 18
      },
-     "id": "esq0mb.gfxq4r",
-     "induk": "esq0mb",
+     "id": "el6bac.gdf21k",
+     "induk": "el6bac",
      "x": 0,
      "y": 0
     },
@@ -551,8 +551,8 @@
      "tipe": "path",
      "nama": "Icon",
      "w": 44,
-     "id": "esq0mb.egf39y",
-     "induk": "esq0mb.gfxq4r",
+     "id": "el6bac.ercwma",
+     "induk": "el6bac.gdf21k",
      "ikon": "shield-check",
      "h": 44,
      "vb": [
@@ -580,8 +580,8 @@
      "spasi": -2,
      "nama": "Title",
      "lebar": "isi",
-     "id": "esq0mb.etje7d",
-     "induk": "esq0mb",
+     "id": "el6bac.eoyoxa",
+     "induk": "el6bac",
      "x": 0,
      "y": 0
     },
@@ -594,15 +594,15 @@
      "lh": 1.45,
      "nama": "Body",
      "lebar": "isi",
-     "id": "esq0mb.emzo6m",
-     "induk": "esq0mb",
+     "id": "el6bac.ek4epo",
+     "induk": "el6bac",
      "x": 0,
      "y": 0
     }
    ]
   },
   {
-   "id": "avnzi6",
+   "id": "a8ea5k",
    "nama": "Traction",
    "x": 6240,
    "y": 0,
@@ -625,7 +625,7 @@
      "x": 140,
      "y": 190,
      "w": 1400,
-     "id": "gsfsoo",
+     "id": "gvzthp",
      "tinggi": "peluk"
     },
     {
@@ -639,8 +639,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "isi",
-     "id": "eh0e3m",
-     "induk": "gsfsoo",
+     "id": "e3zvln",
+     "induk": "gvzthp",
      "x": 0,
      "y": 0
     },
@@ -654,8 +654,8 @@
      "tebal": 700,
      "spasi": -2,
      "lebar": "isi",
-     "id": "eyolmr",
-     "induk": "gsfsoo",
+     "id": "e0d597",
+     "induk": "gvzthp",
      "x": 0,
      "y": 0
     },
@@ -701,7 +701,7 @@
      "tebal": 700,
      "spasi": -4,
      "lebar": "isi",
-     "id": "e1cach",
+     "id": "eb9n17",
      "induk": "stat",
      "x": 0,
      "y": 0
@@ -715,7 +715,7 @@
      "lh": 1.45,
      "nama": "Label",
      "lebar": "isi",
-     "id": "e3iks0",
+     "id": "eallo0",
      "induk": "stat",
      "x": 0,
      "y": 0
@@ -723,13 +723,13 @@
     {
      "tipe": "grup",
      "induk": "deret-stat",
-     "id": "ecugou",
+     "id": "e4z0kp",
      "salinan": "stat",
      "timpa": {
-      "e1cach": {
+      "eb9n17": {
        "teks": "38%"
       },
-      "e3iks0": {
+      "eallo0": {
        "teks": "monthly growth"
       }
      },
@@ -755,8 +755,8 @@
      "tebal": 700,
      "spasi": -4,
      "lebar": "isi",
-     "id": "ecugou.e1cach",
-     "induk": "ecugou",
+     "id": "e4z0kp.eb9n17",
+     "induk": "e4z0kp",
      "x": 0,
      "y": 0
     },
@@ -769,21 +769,21 @@
      "lh": 1.45,
      "nama": "Label",
      "lebar": "isi",
-     "id": "ecugou.e3iks0",
-     "induk": "ecugou",
+     "id": "e4z0kp.eallo0",
+     "induk": "e4z0kp",
      "x": 0,
      "y": 0
     },
     {
      "tipe": "grup",
      "induk": "deret-stat",
-     "id": "eohg30",
+     "id": "e8tj80",
      "salinan": "stat",
      "timpa": {
-      "e1cach": {
+      "eb9n17": {
        "teks": "4.8/5"
       },
-      "e3iks0": {
+      "eallo0": {
        "teks": "user satisfaction"
       }
      },
@@ -809,8 +809,8 @@
      "tebal": 700,
      "spasi": -4,
      "lebar": "isi",
-     "id": "eohg30.e1cach",
-     "induk": "eohg30",
+     "id": "e8tj80.eb9n17",
+     "induk": "e8tj80",
      "x": 0,
      "y": 0
     },
@@ -823,15 +823,15 @@
      "lh": 1.45,
      "nama": "Label",
      "lebar": "isi",
-     "id": "eohg30.e3iks0",
-     "induk": "eohg30",
+     "id": "e8tj80.eallo0",
+     "induk": "e8tj80",
      "x": 0,
      "y": 0
     }
    ]
   },
   {
-   "id": "am5m36",
+   "id": "anrmj1",
    "nama": "Closing",
    "x": 8320,
    "y": 0,
@@ -853,7 +853,7 @@
      "h": 760,
      "fill": "#FFFFFF",
      "opacity": 0.12,
-     "id": "ei4cip"
+     "id": "e38r0k"
     },
     {
      "tipe": "grup",
@@ -865,7 +865,7 @@
      "x": 260,
      "y": 360,
      "w": 1400,
-     "id": "gzxhcw",
+     "id": "gdp5pm",
      "tinggi": "peluk"
     },
     {
@@ -879,8 +879,8 @@
      "spasi": -3,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "enqkhi",
-     "induk": "gzxhcw",
+     "id": "e5yt2v",
+     "induk": "gdp5pm",
      "x": 0,
      "y": 0
     },
@@ -893,8 +893,8 @@
      "lh": 1.45,
      "rata": "tengah",
      "lebar": "isi",
-     "id": "efo133",
-     "induk": "gzxhcw",
+     "id": "e167bj",
+     "induk": "gdp5pm",
      "x": 0,
      "y": 0
     },
@@ -916,8 +916,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "gqv8nj",
-     "induk": "gzxhcw",
+     "id": "g3imcb",
+     "induk": "gdp5pm",
      "x": 0,
      "y": 0
     },
@@ -930,8 +930,8 @@
      "lh": 1.2,
      "tebal": 700,
      "lebar": "peluk",
-     "id": "elzlsk",
-     "induk": "gqv8nj",
+     "id": "e18md8",
+     "induk": "g3imcb",
      "x": 0,
      "y": 0
     },
@@ -943,7 +943,7 @@
      "h": 520,
      "fill": "#FFFFFF",
      "opacity": 0.12,
-     "id": "eel59h"
+     "id": "elkp2f"
     }
    ]
   }

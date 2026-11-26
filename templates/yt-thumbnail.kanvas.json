@@ -18,14 +18,14 @@
      "w": 560,
      "h": 720,
      "fill": "#101634",
-     "id": "eo1uq4"
+     "id": "e42rmf"
     },
     {
      "tipe": "path",
      "x": 820,
      "y": 170,
      "w": 380,
-     "id": "e2whvd",
+     "id": "e2rda9",
      "ikon": "trending-up",
      "nama": "Icon trending-up",
      "h": 380,
@@ -50,7 +50,7 @@
      "x": 64,
      "y": 110,
      "w": 640,
-     "id": "gq9dfa",
+     "id": "gasg11",
      "tinggi": "peluk"
     },
     {
@@ -70,8 +70,8 @@
       ],
       "rata": "tengah"
      },
-     "id": "gdtv1p",
-     "induk": "gq9dfa",
+     "id": "gcywfo",
+     "induk": "gasg11",
      "x": 0,
      "y": 0
     },
@@ -86,8 +86,8 @@
      "kapital": true,
      "spasi": 3,
      "lebar": "peluk",
-     "id": "ekh0os",
-     "induk": "gdtv1p",
+     "id": "ejc3pm",
+     "induk": "gcywfo",
      "x": 0,
      "y": 0
     },
@@ -100,8 +100,8 @@
      "lh": 0.95,
      "spasi": 1,
      "lebar": "isi",
-     "id": "eivkj1",
-     "induk": "gq9dfa",
+     "id": "eq02dr",
+     "induk": "gasg11",
      "x": 0,
      "y": 0
     }
