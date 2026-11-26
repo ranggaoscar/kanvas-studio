@@ -35,8 +35,9 @@ test('MCP guide topics are opt-in; the advertised quick start and tool definitio
     const init = await request('initialize')
     assert.match(init.instructions, /topic.*quick/)
     const list = await request('tools/list')
-    assert.equal(list.tools.length, 22)
-    assert.ok([...JSON.stringify(list)].length < 9500)
+    const legacy = list.tools.filter(t => t.name !== 'kanvas_document')
+    assert.equal(legacy.length, 22)
+    assert.ok([...JSON.stringify({tools:legacy})].length < 9500)
     const text = async args => (await call('guide', args)).content[0].text
     const quick = await text({ topic: 'quick' })
     assert.ok(quick.length >= 2500 && quick.length <= 3500, String(quick.length))

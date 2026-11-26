@@ -2,13 +2,15 @@
 // Agent mana pun yang bisa MCP (Claude Code, Codex, Hermes, Cursor, …) bisa merancang,
 // mengedit, meninjau Visual QA, dan mengekspor desain lintas format secara lokal.
 import { readFileSync, existsSync, readdirSync, statSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join, dirname, resolve, extname, basename, relative, sep } from 'node:path'
+import { join, dirname, resolve, extname, basename, relative, sep, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readdirSync as daftarFile } from 'node:fs'
 import { RUANG, siapkanRuang, jalur, bacaDesain, tulisDesain, tandaiAgen, aktif } from './ruang.js'
 import { mulaiStudio, bukaDiOS, salinKeFolder } from './studio.js'
 import { terapkanOps, desainBaru, normalisasi, PRESET, cariIkon, dataIkon } from './ops.js'
 import { render } from './render.js'
+import { documentAction } from './studio.js'
+import { embedHybridKanvas } from './pdf-bridge.js'
 import { fastQa } from './fast-qa.js'
 import { DIRECTIONS, buildArtDirection, listDirectionsSummary } from './design-intelligence.js'
 import { listBrands, getBrand, saveBrand, setDefaultBrand, deleteBrand, importBrandAsset, applyBrandToDoc } from './brand.js'
@@ -500,12 +502,17 @@ const ALAT = [
       if (selected.length > chosen.length) isi.push(teks(`(${selected.length - chosen.length} more artboards — select them to view)`))
       return isi
     } },
+  { name: 'kanvas_document', description: 'Workspace document I/O. Relative file/output; no overwrite.', inputSchema: {type:'object',required:['action'],properties:{action:{type:'string',enum:['import_xlsx','export_xlsx','import_pdf']},file:{type:'string'},output:{type:'string'},mode:{type:'string',enum:['quick_edit','extract']},create_report:{type:'boolean'},sheets:{type:'array',items:{type:'object'},description:'{name,headers,rows,formats?}'}}},run:async a=>[teks(JSON.stringify(await documentAction(a)))] },
   { name: 'kanvas_export', description: 'Save design exports.',
     inputSchema: { type: 'object', required: ['folder', 'format'], properties: {
       file: { type: 'string' }, folder: { type: 'string', description: 'Absolute path' },
-      format: { type: 'string', enum: ['png', 'jpg', 'svg', 'pdf', 'pptx', 'kanvas'] }, artboard: { type: 'string' },
+      format: { type: 'string', enum: ['png', 'jpg', 'svg', 'pdf', 'pptx', 'kanvas', 'xlsx'] }, artboard: { type: 'string' },
       skala: { type: 'number', description: '1–4; default 2' } } },
     run: async a => {
+      if(a.format==='xlsx'){
+        const file=fileDari(a),folder=String(a.folder||'.');const rel=relative(RUANG,isAbsolute(folder)?folder:resolve(RUANG,folder));
+        return [teks(JSON.stringify(await documentAction({action:'export_xlsx',file,output:join(rel,basename(file).replace(/\.kanvas\.json$/i,'')+'.xlsx')})))]
+      }
       const f = fileDari(a), dest = resolve(String(a.folder))
       if (a.format === 'kanvas') { const r = salinKeFolder(f, dest); return [teks(`Saved: ${r.path}${r.gambar ? ` (+${r.gambar} image(s))` : ''}`)] }
       if (a.format === 'pptx') {
@@ -524,7 +531,10 @@ const ALAT = [
         if (dipakai.has(nama)) nama = `${dasar}-${String(x.nama || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'artboard'}-${x.id}.${a.format}`
         dipakai.add(nama)
         const p = join(dest, nama)
-        writeFileSync(p, a.format === 'svg' ? x.data : Buffer.from(x.data.split(',')[1], 'base64')); ditulis.push(p)
+        const bytes = a.format === 'svg' ? x.data : Buffer.from(x.data.split(',')[1], 'base64')
+        const original = a.format === 'pdf' ? bacaDesain(f) : null
+        if(original && a.artboard) original.artboards=original.artboards.filter(ab=>ab.id===a.artboard)
+        writeFileSync(p, original ? embedHybridKanvas(bytes, original) : bytes); ditulis.push(p)
       }
       return [teks('Saved:\n' + ditulis.join('\n'))]
     } },

@@ -14,6 +14,10 @@ import { readFileSync, existsSync, readdirSync, statSync, mkdirSync, copyFileSyn
 import { join, dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
+import { realpathSync, lstatSync, writeFileSync } from 'node:fs'
+import { buildAdminReportDoc } from './presentation.js'
+import { writeXlsx, readTabularFile, sheetsFromDoc } from './xlsx.js'
+import { inspectPdf, extractHybridKanvas, quickEditPdf } from './pdf-bridge.js'
 import { RUANG, jalur, tulisAtomik, statusAgen, siapkanRuang, bacaDesain } from './ruang.js'
 import { envMinimal } from './render.js'
 import { listBrands } from './brand.js'
@@ -67,7 +71,33 @@ export const gambarLokal = doc => [...new Set((doc.artboards || []).flatMap(ab =
   .filter(e => e.tipe === 'gambar' && e.src && !/^(data:|https?:)/.test(e.src)).map(e => String(e.src))))]
   .filter(s => /\.(png|jpe?g|webp|gif|svg)$/i.test(s) && !s.split(/[\\/]/).some(x => x.startsWith('.')))
 
+// All document actions accept workspace-relative paths; refuse symlinks/junctions and overwrites.
+function bridgePath(file, ext) {
+  if(typeof file!=='string' || file.length>500 || !ext.test(file) || file.split(/[\\/]/).some(s=>s.startsWith('.') || s.includes(':'))) throw Error('Invalid document path or extension')
+  const path=jalur(file), root=realpathSync(RUANG)
+  for(let p=path;p!==RUANG;p=dirname(p)) {
+    const st=lstatSync(p,{throwIfNoEntry:false}); if(st?.isSymbolicLink()) throw Error('Linked paths not permitted')
+    if(st){const real=realpathSync(p);if(!real.startsWith(root+sep))throw Error('Outside workspace')}
+  }
+  return path
+}
+export async function documentAction(a) {
+  const read=(ext)=>{const path=bridgePath(a.file,ext),st=statSync(path);if(!st.isFile()||st.size>64*1024*1024)throw Error('Invalid input or size limit exceeded');return readFileSync(path)}
+  const stem=String(a.file||'table').replace(/(?:\.kanvas)?\.[^.]+$/,'')
+  function save(file,ext,bytes){const p=bridgePath(file,ext);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,bytes,{flag:'wx'});return file}
+  const design=(d,tag)=>({file:save(a.output||`${stem}-${tag}.kanvas.json`,/\.kanvas\.json$/i,JSON.stringify(d)),artboards:d.artboards.length})
+  if(a.action==='import_xlsx'){
+    const data=readTabularFile(read(/\.(csv|xlsx)$/i),{format:extname(a.file).slice(1).toLowerCase(),limit:20}); const {sheets}=data
+    let report={};if(a.create_report){const pages=sheets.filter(s=>s.headers.length).map(s=>({type:'data-table',heading:s.name,columns:s.headers.slice(0,8),rows:s.rows.map(r=>r.slice(0,8)),footnote:`Draft preview: ${s.rows.length} of ${s.rowCount} rows; first 8 columns.`}));report=design(buildAdminReportDoc({judul:'Imported report',pages}).doc,'report')}
+    const short=v=>typeof v==='string'?v.slice(0,80):v
+    return {ok:true,...report,sheetCount:sheets.length,sheets:sheets.slice(0,8).map(s=>({name:s.name.slice(0,60),headers:s.headers.slice(0,12).map(short),columnCount:s.headers.length,rows:s.rows.slice(0,4).map(r=>r.slice(0,12).map(short)),rowCount:s.rowCount}))}
+  }
+  if(a.action==='export_xlsx'){const sheets=a.sheets??sheetsFromDoc(JSON.parse(read(/\.kanvas\.json$/i)));return {ok:true,file:save(a.output||stem+'.xlsx',/\.xlsx$/i,writeXlsx({sheets})),sheetCount:sheets.length}}
+  if(a.action==='import_pdf'){if(a.mode&&!['extract','quick_edit'].includes(a.mode))throw Error('Invalid PDF mode');const b=read(/\.pdf$/i),hybrid=extractHybridKanvas(b);if(hybrid)return {ok:true,isHybrid:true,needsVisionFallback:false,...design(hybrid,'editable')};if(a.mode==='quick_edit')return {ok:true,isHybrid:false,...design(await quickEditPdf(b),'overlay')};return {ok:true,...await inspectPdf(b)}}
+  throw Error('Unknown document action')
+}
 const API = {
+  'POST document': documentAction,
   'GET info': () => ({ ok: true, ruangKerja: RUANG, build: BUILD, versi: JSON.parse(readFileSync(join(AKAR, 'package.json'), 'utf8')).version }),
   'GET agen': () => statusAgen(),
   'GET brands': () => ({ ok: true, ...listBrands() }),
